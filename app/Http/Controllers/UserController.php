@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
+use App\Services\TimeClock;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -58,6 +59,10 @@ class UserController extends Controller
         $this->guardLastAdmin($user, Role::from($data['role']), (bool) $data['active']);
 
         $user->update($data);
+
+        if (! $user->active) {
+            app(TimeClock::class)->closeOpen($user, $request->user());
+        }
 
         return redirect()->route('usuarios.index')->with('status', 'Usuário atualizado.');
     }

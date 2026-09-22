@@ -94,7 +94,7 @@ class ProjectTest extends TestCase
             'name' => 'Acabamento',
             'kind' => 'third_party',
             'budget' => '500,00',
-        ])->assertRedirect('/');
+        ])->assertRedirect('/projetos/'.$project->id.'/ponto');
 
         $subtask = Subtask::query()->first();
         $this->assertSame('Acabamento', $subtask->name);

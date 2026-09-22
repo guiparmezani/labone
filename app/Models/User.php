@@ -44,6 +44,11 @@ class User extends Authenticatable
         return $this->role === Role::Operator;
     }
 
+    public function timeLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TimeLog::class);
+    }
+
     public function managesProjects(): bool
     {
         return $this->isAdmin() || $this->isLeader();

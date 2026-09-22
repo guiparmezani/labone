@@ -34,7 +34,7 @@ class SubtaskController extends Controller
         ]);
 
         $back = $user->isOperator()
-            ? route('inicio')
+            ? route('projetos.ponto', $project)
             : route('projetos.show', $project);
 
         return redirect($back)->with('status', 'Subtarefa criada.');

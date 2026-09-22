@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ClockController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubtaskController;
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::post('/projetos/{project}/reabrir', [ProjectController::class, 'reopen'])->name('projetos.reopen');
     Route::delete('/projetos/{project}', [ProjectController::class, 'destroy'])->name('projetos.destroy');
     Route::post('/projetos/{project}/subtarefas', [SubtaskController::class, 'store'])->name('subtarefas.store');
+    Route::get('/projetos/{project}/ponto', [ClockController::class, 'show'])->name('projetos.ponto');
+    Route::post('/ponto/iniciar', [ClockController::class, 'start'])->name('ponto.start');
+    Route::post('/ponto/parar', [ClockController::class, 'stop'])->name('ponto.stop');
     Route::get('/subtarefas/{subtask}/editar', [SubtaskController::class, 'edit'])->name('subtarefas.edit');
     Route::put('/subtarefas/{subtask}', [SubtaskController::class, 'update'])->name('subtarefas.update');
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
