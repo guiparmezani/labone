@@ -5,6 +5,7 @@ use App\Http\Controllers\ClockController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubtaskController;
+use App\Http\Controllers\TimeLogController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,15 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::get('/projetos/{project}/ponto', [ClockController::class, 'show'])->name('projetos.ponto');
     Route::post('/ponto/iniciar', [ClockController::class, 'start'])->name('ponto.start');
     Route::post('/ponto/parar', [ClockController::class, 'stop'])->name('ponto.stop');
+
+    Route::middleware('papel:admin,leader')->group(function () {
+        Route::get('/lancamentos', [TimeLogController::class, 'index'])->name('lancamentos.index');
+        Route::get('/lancamentos/novo', [TimeLogController::class, 'create'])->name('lancamentos.create');
+        Route::post('/lancamentos', [TimeLogController::class, 'store'])->name('lancamentos.store');
+        Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
+        Route::put('/lancamentos/{timeLog}', [TimeLogController::class, 'update'])->name('lancamentos.update');
+        Route::delete('/lancamentos/{timeLog}', [TimeLogController::class, 'destroy'])->name('lancamentos.destroy');
+    });
     Route::get('/subtarefas/{subtask}/editar', [SubtaskController::class, 'edit'])->name('subtarefas.edit');
     Route::put('/subtarefas/{subtask}', [SubtaskController::class, 'update'])->name('subtarefas.update');
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
