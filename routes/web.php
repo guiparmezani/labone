@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClockController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubtaskController;
 use App\Http\Controllers\TimeLogController;
 use App\Http\Controllers\UserController;
@@ -45,6 +46,10 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
 
     Route::middleware('papel:admin')->group(function () {
+        Route::get('/relatorios', [ReportController::class, 'index'])->name('relatorios.index');
+        Route::get('/relatorios/horas.csv', [ReportController::class, 'hours'])->name('relatorios.hours');
+        Route::get('/relatorios/projetos.csv', [ReportController::class, 'projects'])->name('relatorios.projects');
+
         Route::resource('usuarios', UserController::class)
             ->except(['show', 'destroy'])
             ->parameters(['usuarios' => 'user']);

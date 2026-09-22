@@ -99,4 +99,9 @@ class Formato
     {
         return number_format($minutos / 60, 2, ',', '');
     }
+
+    public static function decimal(int $centavos): string
+    {
+        return number_format($centavos / 100, 2, ',', '');
+    }
 }
