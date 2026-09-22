@@ -21,6 +21,10 @@ class StoreSubtaskRequest extends FormRequest
             $this->merge([
                 'kind' => SubtaskKind::Internal->value,
                 'budget_cents' => null,
+                'planned_minutes' => null,
+                'realized_cents' => null,
+                'alert_percentage' => null,
+                'alert_enabled' => false,
             ]);
 
             return;

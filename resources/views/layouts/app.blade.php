@@ -38,5 +38,6 @@
         @endif
         @yield('content')
     </main>
+    <script src="{{ asset('js/timer.js') }}"></script>
 </body>
 </html>

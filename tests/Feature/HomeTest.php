@@ -45,9 +45,10 @@ class HomeTest extends TestCase
             ->assertSee('Molde visível')
             ->assertSee('Desde')
             ->assertSee('Parar')
+            ->assertSee('data-started-at', false)
+            ->assertSee('elapsed', false)
             ->assertDontSee('Outra Pessoa')
             ->assertDontSee('R$ 9.876,54')
-            ->assertDontSee('data-started-at')
             ->assertDontSee('2h 03min');
     }
 

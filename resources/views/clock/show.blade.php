@@ -4,17 +4,7 @@
     <h1>{{ $project->name }}</h1>
 
     @if ($openLog)
-        <section class="clock-bar">
-            <div>
-                <strong>{{ $openLog->subtask->project->name }}</strong>
-                <p>{{ $openLog->subtask->name }}</p>
-                <p>Desde {{ \App\Support\Formato::hora($openLog->started_at) }}</p>
-            </div>
-            <form method="POST" action="{{ route('ponto.stop') }}">
-                @csrf
-                <button class="btn btn-primary btn-phone" type="submit">Parar</button>
-            </form>
-        </section>
+        @include('clock._running')
         <p>Você já tem um ponto em andamento. Pare esse ponto antes de iniciar outro.</p>
     @elseif (! $project->isOpen())
         <p>Este item não aceita ponto.</p>

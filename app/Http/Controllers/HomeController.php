@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Models\Subtask;
 use App\Models\TimeLog;
 use App\Services\TimeClock;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class HomeController extends Controller
             ]);
         }
 
-        return view('home.manager', [
+        $data = [
             'projects' => Project::query()
                 ->where('status', ProjectStatus::Open)
                 ->withTotals()
@@ -39,6 +40,16 @@ class HomeController extends Controller
                 ->with(['user', 'subtask.project'])
                 ->orderBy('started_at')
                 ->get(),
-        ]);
+        ];
+
+        if ($user->isAdmin()) {
+            $data['reachedAlerts'] = Subtask::query()
+                ->reached()
+                ->withLoggedMinutes()
+                ->with('project')
+                ->get();
+        }
+
+        return view('home.manager', $data);
     }
 }

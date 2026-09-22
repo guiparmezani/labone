@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
-#[Fillable(['project_id', 'name', 'kind', 'budget_cents', 'created_by'])]
+#[Fillable(['project_id', 'name', 'kind', 'budget_cents', 'planned_minutes', 'realized_cents', 'alert_percentage', 'alert_enabled', 'created_by'])]
 class Subtask extends Model
 {
     /** @use HasFactory<SubtaskFactory> */
@@ -25,6 +26,10 @@ class Subtask extends Model
         return [
             'kind' => SubtaskKind::class,
             'budget_cents' => 'integer',
+            'planned_minutes' => 'integer',
+            'realized_cents' => 'integer',
+            'alert_percentage' => 'integer',
+            'alert_enabled' => 'boolean',
         ];
     }
 
@@ -66,6 +71,46 @@ class Subtask extends Model
 
     public function loggedMinutes(): int
     {
-        return (int) ($this->attributes['logged_minutes'] ?? $this->timeLogs()->whereNotNull('ended_at')->count());
+        if (array_key_exists('logged_minutes', $this->attributes)) {
+            return (int) $this->attributes['logged_minutes'];
+        }
+
+        $duration = TimeLog::durationSql('time_logs');
+
+        return (int) $this->timeLogs()->whereNotNull('ended_at')->sum(DB::raw($duration));
+    }
+
+    /**
+     * Alarme desta subtarefa, só com o interruptor ligado e horas previstas acima de zero.
+     * Ponto aberto não entra.
+     */
+    public function alertReached(): bool
+    {
+        if (! $this->alert_enabled || $this->planned_minutes === null || $this->planned_minutes <= 0 || $this->alert_percentage === null) {
+            return false;
+        }
+
+        return $this->loggedMinutes() * 100 >= $this->planned_minutes * $this->alert_percentage;
+    }
+
+    /**
+     * @param  Builder<Subtask>  $query
+     * @return Builder<Subtask>
+     */
+    public function scopeReached(Builder $query): Builder
+    {
+        $duration = TimeLog::durationSql('tl');
+
+        return $query
+            ->select('subtasks.*')
+            ->join('projects', 'projects.id', '=', 'subtasks.project_id')
+            ->where('subtasks.alert_enabled', true)
+            ->where('subtasks.planned_minutes', '>', 0)
+            ->whereNotNull('subtasks.alert_percentage')
+            ->whereRaw(
+                '(select coalesce(sum('.$duration.'), 0) from time_logs as tl where tl.subtask_id = subtasks.id and tl.ended_at is not null) * 100 >= subtasks.planned_minutes * subtasks.alert_percentage'
+            )
+            ->orderBy('projects.name')
+            ->orderBy('subtasks.name');
     }
 }

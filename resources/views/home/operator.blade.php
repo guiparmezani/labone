@@ -18,17 +18,7 @@
         </section>
         <section>
             @if ($openLog)
-                <div class="clock-bar">
-                    <div>
-                        <strong>{{ $openLog->subtask->project->name }}</strong>
-                        <p>{{ $openLog->subtask->name }}</p>
-                        <p>Desde {{ \App\Support\Formato::hora($openLog->started_at) }}</p>
-                    </div>
-                    <form method="POST" action="{{ route('ponto.stop') }}">
-                        @csrf
-                        <button class="btn btn-primary btn-phone" type="submit">Parar</button>
-                    </form>
-                </div>
+                @include('clock._running')
             @else
                 <section class="panel">
                     <h2>Ponto</h2>

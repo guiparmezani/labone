@@ -85,6 +85,21 @@ class Formato
         return Carbon::instance($utc)->timezone(self::TZ)->format('H:i');
     }
 
+    /**
+     * Relógio do ponto aberto, no formato 00:25:08. Não é o total do projeto.
+     */
+    public static function cronometro(CarbonInterface $inicio): string
+    {
+        $segundos = max(0, (int) Carbon::instance($inicio)->diffInSeconds(now()));
+
+        return sprintf(
+            '%02d:%02d:%02d',
+            intdiv($segundos, 3600),
+            intdiv($segundos % 3600, 60),
+            $segundos % 60,
+        );
+    }
+
     public static function data(CarbonInterface $utc): string
     {
         return Carbon::instance($utc)->timezone(self::TZ)->format('d/m/Y');

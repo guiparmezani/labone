@@ -29,7 +29,13 @@ class SubtaskController extends Controller
             'project_id' => $project->id,
             'name' => $request->string('name')->toString(),
             'kind' => $kind,
-            'budget_cents' => $kind === SubtaskKind::ThirdParty ? $request->integer('budget_cents') : null,
+            'budget_cents' => $user->isOperator() || $kind !== SubtaskKind::ThirdParty
+                ? null
+                : $request->integer('budget_cents'),
+            'planned_minutes' => null,
+            'realized_cents' => null,
+            'alert_percentage' => null,
+            'alert_enabled' => false,
             'created_by' => $user->id,
         ]);
 
@@ -61,7 +67,11 @@ class SubtaskController extends Controller
         $subtask->update([
             'name' => $request->string('name')->toString(),
             'kind' => $kind,
-            'budget_cents' => $kind === SubtaskKind::ThirdParty ? $request->integer('budget_cents') : null,
+            'budget_cents' => $request->input('budget_cents'),
+            'planned_minutes' => $request->input('planned_minutes'),
+            'realized_cents' => $request->input('realized_cents'),
+            'alert_percentage' => $request->input('alert_percentage'),
+            'alert_enabled' => $request->boolean('alert_enabled'),
         ]);
 
         return redirect()->route('projetos.show', $subtask->project_id)->with('status', 'Subtarefa atualizada.');

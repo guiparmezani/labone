@@ -148,12 +148,22 @@ Delete a project only when it has no time logs. Otherwise the only exit is close
 | `project_id` | Required. Project must be open to create. |
 | `name` | Required, 2–160 characters. Duplicates are allowed. |
 | `kind` | `internal` or `third_party` |
-| `budget_cents` | Required and ≥ 0 when `kind` is `third_party`. Null when `kind` is `internal`. |
+| `budget_cents` | Valor previsto, in cents. Required and ≥ 0 when `kind` is `third_party`. Optional for an internal subtask. |
+| `planned_minutes` | Tempo previsto for this subtask. Optional. Empty until someone fills it in. |
+| `realized_cents` | Valor realizado, typed in reais and stored as cents. Optional. Not computed from hours. |
+| `alert_percentage` | Optional integer 1–100. |
+| `alert_enabled` | Checkbox. The percentage is kept when this is off, and the alert does not fire. |
 | `created_by` | User id |
 
-An internal subtask is what people clock. A third-party subtask is a budget line for an outside crew. It never receives a time log. Changing `kind` after logs exist is rejected. Changing a third-party subtask to internal is allowed only while it has no logs.
+An internal subtask is what people clock. A third-party subtask never receives a time log. Changing `kind` after logs exist is rejected. Changing a third-party subtask to internal is allowed only while it has no logs.
 
-Operators may create subtasks. The server forces `kind = internal` and `budget_cents = null` on that path. The operator form has a name field and nothing else.
+Tempo realizado is the sum of finished logs on that subtask. Open timers do not count. Valor realizado is whatever the leader or admin types.
+
+An alert is reached only when `alert_enabled` is true, `planned_minutes` is greater than zero, and finished logged minutes × 100 is at least `planned_minutes` × `alert_percentage`. Reached alerts show on the admin home, with the project name, the subtask name, and the percentage.
+
+Operators may create subtasks. The server forces `kind = internal` and leaves planned time, both money fields, and the alert empty on that path. The operator form has a name field and nothing else.
+
+Copying a project asks for a new name and duplicates notes, the project budget and planned hours, and every subtask with its planned time, valor previsto, and alert. It does not copy time logs or valor realizado. The copy opens as a new project.
 
 ### time_logs
 
@@ -185,6 +195,9 @@ Enforce these on the server for every route, not only in the navigation. A forbi
 | Sign in | Yes | Yes | Yes |
 | Manage users | Yes | No | No |
 | Open reports and CSV | Yes | No | No |
+| Set a subtask alert (percentage and on/off) | Yes | Yes | No |
+| See reached alerts on the home screen | Yes | No | No |
+| Copy a project | Yes | Yes | No |
 | Create, edit, close, reopen projects | Yes | Yes | No |
 | Delete a project that has no logs | Yes | Yes | No |
 | See budgets, planned hours, logged totals | Yes | Yes | No |
@@ -242,7 +255,9 @@ Email, password, submit. Generic error on failure: "E-mail ou senha inválidos."
 
 ### Início
 
-Two regions.
+Admin sees one extra panel at the top: **Alertas atingidos**. It lists every subtask whose alarm is on and whose finished hours have reached that subtask's percentage. Each row shows project, subtask, percentage, and hours logged against that subtask's planned hours. Empty state: "Nenhum alerta atingido." Leaders and operators do not get this panel.
+
+Two regions below that.
 
 **Left — Projetos em andamento.** Open projects only.
 
@@ -251,8 +266,8 @@ Two regions.
 
 **Right — Pontos em andamento.**
 
-- Admin and leader see every open log: operator name, project, subtask, time of day it started, and a live elapsed counter driven from `started_at` in the page. Refreshing the page is enough if the script does not run. This region can be empty: "Nenhum ponto em andamento."
-- Operator sees their own open log only: project, subtask, "Desde HH:MM", and **Parar**. No elapsed counter, no history, no other people. If they have nothing open: "Você não tem ponto em andamento."
+- Admin and leader see every open log: operator name, project, subtask, time of day it started, and a live clock `HH:MM:SS` driven from `started_at`. The server prints the current elapsed time, and a script advances the seconds. This region can be empty: "Nenhum ponto em andamento."
+- Operator sees their own open log only: project, subtask, the same live clock for this point, "Desde HH:MM", and **Parar**. That clock is only the point they have open. It is not the total already spent on the task or the project. No history, no other people. The same clock appears on the start screen after they press **Iniciar**. If they have nothing open: "Você não tem ponto em andamento."
 
 ### Projetos
 
@@ -274,11 +289,13 @@ Operators have no project list route. They reach open projects from Início.
 
 Admin and leader see the project header with the same figures as the list, then two groups of subtasks.
 
-Internal subtasks: name, logged hours, a control to edit or delete when the subtask has no logs. Delete is hidden when logs exist.
+Internal subtasks: name, tempo previsto, tempo realizado, valor previsto, valor realizado, and the alarm. Edit and delete when the subtask has no logs. Delete is hidden when logs exist.
 
-Third-party subtasks: name, budget, edit, delete when unused.
+Third-party subtasks: the same columns except tempo realizado, because that row never gets a clock.
 
-**Nova subtarefa** for these roles asks for name, type (Interna / Equipe terceira), and budget when the type is third-party.
+Each group has its own add form on an open project. Internal asks for a name. Equipe terceira asks for a name and valor previsto. The rest of the numbers, and the alarm checkbox plus percentage, are on the edit form.
+
+**Copiar** asks only for the new name.
 
 Operator project screen, reached from Início: project name as a heading, then internal subtasks, each with **Iniciar**. Third-party rows are omitted. No hours, no money. At the bottom, a single field **Nova subtarefa** and a save button. If this operator already has an open timer, **Iniciar** is not shown; a line tells them to stop the current point first.
 

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <section class="panel panel-narrow">
+    <section class="panel">
         <h1>Editar projeto</h1>
         <form method="POST" action="{{ route('projetos.update', $project) }}" class="stack">
             @csrf

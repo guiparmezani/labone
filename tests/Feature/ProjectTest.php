@@ -108,6 +108,10 @@ class ProjectTest extends TestCase
         $leader = $this->actingAsRole(Role::Leader);
         $project = Project::factory()->create(['created_by' => $leader->id]);
 
+        $this->get('/projetos/'.$project->id)
+            ->assertOk()
+            ->assertSee('Adicionar equipe terceira');
+
         $this->post('/projetos/'.$project->id.'/subtarefas', [
             'name' => 'Usinagem externa',
             'kind' => 'third_party',
