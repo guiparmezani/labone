@@ -12,6 +12,9 @@
         @auth
             <nav class="nav">
                 <a href="{{ route('inicio') }}" @class(['is-current' => request()->routeIs('inicio')])>Início</a>
+                @if (auth()->user()->managesProjects())
+                    <a href="{{ route('projetos.index') }}" @class(['is-current' => request()->routeIs('projetos.*')])>Projetos</a>
+                @endif
                 @if (auth()->user()->isAdmin())
                     <a href="{{ route('usuarios.index') }}" @class(['is-current' => request()->routeIs('usuarios.*')])>Usuários</a>
                 @endif
