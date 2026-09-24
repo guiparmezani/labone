@@ -1,58 +1,44 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Controle de projetos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Shop time tracking for one plastics plant. People clock internal subtasks. Leaders keep a budget in reais and a planned number of hours next to the time already worked. The screen is in Brazilian Portuguese. Money is BRL. Dates and the clock use `America/Sao_Paulo`.
 
-## About Laravel
+This is the v1 pilot. The client tests it, then further changes are quoted again. The build contract is [docs/tech-spec.md](docs/tech-spec.md). The short handover for the people who will use it is [docs/guia-do-piloto.md](docs/guia-do-piloto.md).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Roles
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Role | What they can do |
+|---|---|
+| Administrador | Everything: projects, time logs, reports, CSV, users, and the alerts that have been reached |
+| Líder | Projects, subtasks, and any time log. No reports and no user admin |
+| Operador | Start and stop their own timer, and add an internal subtask. No budgets, planned hours, logged totals, history, or anyone else's timer |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+One open timer per person. Logging out does not stop it. Deactivating a user does.
 
-## Learning Laravel
+A project has internal subtasks (the clock) and third-party subtasks (a typed budget, no clock). Each subtask can also store planned hours, a planned amount, a realized amount someone types in, and an hour alarm. The alarm is a percentage plus an on/off switch. When it is on and finished hours cross that percentage, the admin sees it on the home screen. A running timer does not count.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+A project can be copied under a new name. The copy keeps the plan and the alarms, and drops the hours already logged and the realized amounts.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Stack
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Laravel 13, PHP 8.4, MySQL, Apache. Blade and plain CSS in `public/css`. No Node build, no Docker, no public API.
 
-## Agentic Development
+Apache on this machine loads PHP 8.4. Artisan, Composer, and tests need that same major. If `php -v` is something else, call the 8.4 binary (`/opt/homebrew/opt/php@8.4/bin/php` here) instead of `php`.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```sh
+php artisan test
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Run it locally
 
-## Contributing
+The app is served by the Apache already on this machine. The vhost `labone.localhost` points at `public/`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```sh
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate --seed
+```
 
-## Code of Conduct
+`.env.example` expects MySQL database `labone` on `127.0.0.1:3306`, user `root`, empty password. Then open [http://labone.localhost](http://labone.localhost).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The seed creates a small plant. Every demo user starts with the password `senha-segura`. Change those passwords before the client uses the address. Accounts and what each role sees are in the handover guide.
