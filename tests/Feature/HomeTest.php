@@ -70,6 +70,38 @@ class HomeTest extends TestCase
             ->assertOk()
             ->assertSee('R$ 9.876,54')
             ->assertSee('Joana Torno')
-            ->assertSee('data-started-at');
+            ->assertSee('Iniciar ponto')
+            ->assertSee('data-started-at')
+            ->assertDontSee('Parar');
+    }
+
+    public function test_lider_inicia_pelo_mesmo_ponto_e_para_o_proprio_relogio(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $project = Project::factory()->create(['name' => 'Molde do lider']);
+        $subtask = Subtask::factory()->create([
+            'project_id' => $project->id,
+            'name' => 'Bancada',
+        ]);
+
+        $this->get(route('projetos.show', $project))
+            ->assertOk()
+            ->assertSee(route('projetos.ponto', $project), false);
+
+        $this->get(route('projetos.ponto', $project))
+            ->assertOk()
+            ->assertSee('Bancada')
+            ->assertSee('Iniciar');
+
+        $this->get('/')->assertOk()->assertSee('Iniciar ponto');
+
+        $this->post('/ponto/iniciar', ['subtask_id' => $subtask->id])->assertRedirect();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Bancada')
+            ->assertSee('Parar');
+
+        $this->assertSame(1, TimeLog::query()->where('user_id', $leader->id)->whereNull('ended_at')->count());
     }
 }

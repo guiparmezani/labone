@@ -1,0 +1,56 @@
+name: labone
+
+services:
+  db:
+    image: mariadb:11.8
+    restart: unless-stopped
+    command: --innodb-buffer-pool-size=128M
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mariadb-admin ping -h 127.0.0.1 -u"$${MARIADB_USER}" -p"$${MARIADB_PASSWORD}" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    build:
+      context: ./app
+      dockerfile: deploy/vps/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "80"
+    networks:
+      default:
+      public_proxy:
+        aliases:
+          - labone-web
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - php -r 'exit(@file_get_contents("http://127.0.0.1/up")===false?1:0);'
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  db_data:
+
+networks:
+  public_proxy:
+    external: true

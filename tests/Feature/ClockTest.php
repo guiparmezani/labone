@@ -44,17 +44,18 @@ class ClockTest extends TestCase
             ->assertDontSee('987654');
     }
 
-    public function test_segundo_inicio_falha_e_deixa_um_ponto_aberto(): void
+    public function test_segundo_inicio_em_outra_subtarefa_fica_aberto_e_a_mesma_recusa(): void
     {
         $operator = $this->actingAsRole(Role::Operator);
         $first = Subtask::factory()->create();
         $second = Subtask::factory()->create();
 
         $this->post('/ponto/iniciar', ['subtask_id' => $first->id])->assertRedirect();
-        $this->post('/ponto/iniciar', ['subtask_id' => $second->id])
+        $this->post('/ponto/iniciar', ['subtask_id' => $second->id])->assertRedirect();
+        $this->post('/ponto/iniciar', ['subtask_id' => $first->id])
             ->assertSessionHasErrors('subtask_id');
 
-        $this->assertSame(1, TimeLog::query()->where('user_id', $operator->id)->whereNull('ended_at')->count());
+        $this->assertSame(2, TimeLog::query()->where('user_id', $operator->id)->whereNull('ended_at')->count());
     }
 
     public function test_terceiros_e_projeto_encerrado_recusam_ponto(): void
@@ -98,6 +99,13 @@ class ClockTest extends TestCase
             'updated_by' => $operator->id,
             'started_at' => now()->subMinutes(10),
         ]);
+        TimeLog::factory()->open()->create([
+            'user_id' => $operator->id,
+            'subtask_id' => Subtask::factory()->create()->id,
+            'created_by' => $operator->id,
+            'updated_by' => $operator->id,
+            'started_at' => now()->subMinutes(4),
+        ]);
 
         $this->put('/usuarios/'.$operator->id, [
             'name' => $operator->name,
@@ -106,8 +114,7 @@ class ClockTest extends TestCase
             'active' => '0',
         ])->assertRedirect('/usuarios');
 
-        $log = TimeLog::query()->first();
-        $this->assertNotNull($log->ended_at);
-        $this->assertSame($admin->id, $log->updated_by);
+        $this->assertSame(0, TimeLog::query()->whereNull('ended_at')->count());
+        $this->assertTrue(TimeLog::query()->where('updated_by', $admin->id)->count() === 2);
     }
 }

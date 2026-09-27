@@ -20,12 +20,31 @@ class UpdateSubtaskRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $subtask = $this->route('subtask');
+        $admin = $this->user()?->isAdmin() ?? false;
+        $kind = (string) $this->input('kind');
+        $revision = $this->boolean('is_revision');
+
+        $planned = $admin || ! $subtask instanceof Subtask
+            ? $this->hoursOrInvalid('planned_hours')
+            : $subtask->planned_minutes;
+
+        $budget = $this->moneyOrInvalid('budget');
+        if (! $admin && $subtask instanceof Subtask && $kind === SubtaskKind::ThirdParty->value) {
+            $budget = $subtask->kind === SubtaskKind::ThirdParty ? $subtask->budget_cents : null;
+        }
+
+        $alert = trim((string) $this->input('alert_percentage'));
+
         $this->merge([
-            'budget_cents' => $this->moneyOrInvalid('budget'),
-            'planned_minutes' => $this->hoursOrInvalid('planned_hours'),
+            'budget_cents' => $budget,
+            'planned_minutes' => $planned,
             'realized_cents' => $this->moneyOrInvalid('realized'),
-            'alert_enabled' => $this->boolean('alert_enabled'),
-            'alert_percentage' => $this->filled('alert_percentage') ? $this->input('alert_percentage') : null,
+            'alert_enabled' => $alert !== '',
+            'alert_percentage' => $alert === '' ? null : $alert,
+            'is_revision' => $revision,
+            'revision_notes' => $revision ? ($this->input('revision_notes') ?: null) : null,
+            'revision_of_subtask_id' => $revision ? ($this->input('revision_of_subtask_id') ?: null) : null,
         ]);
     }
 
@@ -38,21 +57,29 @@ class UpdateSubtaskRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:160'],
             'kind' => ['required', Rule::enum(SubtaskKind::class)],
             'budget_cents' => [
-                Rule::requiredIf(fn () => $this->input('kind') === SubtaskKind::ThirdParty->value),
+                Rule::requiredIf(fn () => $this->user()?->isAdmin() && $this->input('kind') === SubtaskKind::ThirdParty->value),
                 'nullable',
                 'integer',
                 'min:0',
             ],
+            'is_revision' => ['boolean'],
+            'revision_notes' => ['nullable', 'string', 'max:2000'],
+            'revision_of_subtask_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('subtasks', 'id')->where(function ($query) {
+                    $subtask = $this->route('subtask');
+                    $query->where('kind', SubtaskKind::ThirdParty->value);
+
+                    if ($subtask instanceof Subtask) {
+                        $query->where('project_id', $subtask->project_id);
+                    }
+                }),
+            ],
             'planned_minutes' => ['nullable', 'integer', 'min:0'],
             'realized_cents' => ['nullable', 'integer', 'min:0'],
             'alert_enabled' => ['boolean'],
-            'alert_percentage' => [
-                Rule::requiredIf(fn () => $this->boolean('alert_enabled')),
-                'nullable',
-                'integer',
-                'min:1',
-                'max:100',
-            ],
+            'alert_percentage' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 
@@ -72,10 +99,11 @@ class UpdateSubtaskRequest extends FormRequest
             'planned_minutes.min' => 'O tempo previsto não pode ser negativo.',
             'realized_cents.integer' => 'Informe o valor realizado em reais.',
             'realized_cents.min' => 'O valor realizado não pode ser negativo.',
-            'alert_percentage.required' => 'Informe a porcentagem do alarme.',
             'alert_percentage.integer' => 'A porcentagem precisa ser um número de 1 a 100.',
             'alert_percentage.min' => 'A porcentagem precisa ser um número de 1 a 100.',
             'alert_percentage.max' => 'A porcentagem precisa ser um número de 1 a 100.',
+            'revision_notes.max' => 'A descrição da revisão pode ter no máximo 2000 caracteres.',
+            'revision_of_subtask_id.exists' => 'A revisão precisa apontar para uma equipe terceira deste projeto.',
         ];
     }
 

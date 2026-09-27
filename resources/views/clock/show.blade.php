@@ -3,22 +3,37 @@
 @section('content')
     <h1>{{ $project->name }}</h1>
 
-    @if ($openLog)
-        @include('clock._running')
-        <p>Você já tem um ponto em andamento. Pare esse ponto antes de iniciar outro.</p>
-    @elseif (! $project->isOpen())
+    @if ($openLogs->isNotEmpty())
+        <div class="stack" style="margin-bottom: 1rem;">
+            @foreach ($openLogs as $openLog)
+                @include('clock._running')
+            @endforeach
+        </div>
+    @endif
+
+    @if (! $project->isOpen())
         <p>Este item não aceita ponto.</p>
     @else
         <section class="panel">
             <ul class="list">
                 @forelse ($subtasks as $subtask)
+                    @php $running = $openLogs->firstWhere('subtask_id', $subtask->id); @endphp
                     <li>
-                        <form method="POST" action="{{ route('ponto.start') }}" class="row-link">
-                            @csrf
-                            <input type="hidden" name="subtask_id" value="{{ $subtask->id }}">
-                            <span>{{ $subtask->name }}</span>
-                            <button class="btn btn-primary" type="submit">Iniciar</button>
-                        </form>
+                        @if ($running)
+                            <form method="POST" action="{{ route('ponto.stop') }}" class="row-link">
+                                @csrf
+                                <input type="hidden" name="time_log_id" value="{{ $running->id }}">
+                                <span>{{ $subtask->name }}</span>
+                                <button class="btn btn-primary" type="submit">Parar</button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('ponto.start') }}" class="row-link">
+                                @csrf
+                                <input type="hidden" name="subtask_id" value="{{ $subtask->id }}">
+                                <span>{{ $subtask->name }}</span>
+                                <button class="btn btn-primary" type="submit">Iniciar</button>
+                            </form>
+                        @endif
                     </li>
                 @empty
                     <li><p>Nenhuma subtarefa interna.</p></li>

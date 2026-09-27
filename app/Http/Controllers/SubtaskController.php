@@ -25,17 +25,20 @@ class SubtaskController extends Controller
             ? SubtaskKind::Internal
             : SubtaskKind::from($request->string('kind')->toString());
 
+        $operator = $user->isOperator();
+
         Subtask::query()->create([
             'project_id' => $project->id,
             'name' => $request->string('name')->toString(),
             'kind' => $kind,
-            'budget_cents' => $user->isOperator() || $kind !== SubtaskKind::ThirdParty
-                ? null
-                : $request->integer('budget_cents'),
-            'planned_minutes' => null,
-            'realized_cents' => null,
-            'alert_percentage' => null,
-            'alert_enabled' => false,
+            'budget_cents' => $operator ? null : $request->input('budget_cents'),
+            'planned_minutes' => $operator ? null : $request->input('planned_minutes'),
+            'realized_cents' => $operator ? null : $request->input('realized_cents'),
+            'alert_percentage' => $operator ? null : $request->input('alert_percentage'),
+            'alert_enabled' => $operator ? false : $request->boolean('alert_enabled'),
+            'is_revision' => $operator ? false : $request->boolean('is_revision'),
+            'revision_notes' => $operator ? null : $request->input('revision_notes'),
+            'revision_of_subtask_id' => $operator ? null : $request->input('revision_of_subtask_id'),
             'created_by' => $user->id,
         ]);
 
@@ -50,7 +53,15 @@ class SubtaskController extends Controller
     {
         $this->authorize('update', $subtask);
 
-        return view('subtasks.edit', ['subtask' => $subtask]);
+        return view('subtasks.edit', [
+            'subtask' => $subtask,
+            'thirdParties' => Subtask::query()
+                ->where('project_id', $subtask->project_id)
+                ->where('kind', SubtaskKind::ThirdParty)
+                ->whereKeyNot($subtask->id)
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
     public function update(UpdateSubtaskRequest $request, Subtask $subtask): RedirectResponse
@@ -72,6 +83,9 @@ class SubtaskController extends Controller
             'realized_cents' => $request->input('realized_cents'),
             'alert_percentage' => $request->input('alert_percentage'),
             'alert_enabled' => $request->boolean('alert_enabled'),
+            'is_revision' => $request->boolean('is_revision'),
+            'revision_notes' => $request->input('revision_notes'),
+            'revision_of_subtask_id' => $request->input('revision_of_subtask_id'),
         ]);
 
         return redirect()->route('projetos.show', $subtask->project_id)->with('status', 'Subtarefa atualizada.');

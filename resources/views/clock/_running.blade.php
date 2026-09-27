@@ -7,6 +7,7 @@
     </div>
     <form method="POST" action="{{ route('ponto.stop') }}">
         @csrf
+        <input type="hidden" name="time_log_id" value="{{ $openLog->id }}">
         <button class="btn btn-primary btn-phone" type="submit">Parar</button>
     </form>
 </section>

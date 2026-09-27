@@ -101,10 +101,12 @@ class ProjectAlertTest extends TestCase
 
         $this->get(route('inicio'))
             ->assertOk()
-            ->assertSee('Nenhum alerta atingido.');
+            ->assertSee('Molde — So aberto · 1%')
+            ->assertDontSee('Desligado ·')
+            ->assertDontSee('Sem meta ·');
     }
 
-    public function test_lider_nao_ve_o_painel_e_operador_nao_grava_alarme(): void
+    public function test_lider_ve_o_painel_e_operador_nao_grava_alarme(): void
     {
         $project = Project::factory()->create();
         $leader = User::factory()->leader()->create();
@@ -113,7 +115,7 @@ class ProjectAlertTest extends TestCase
         $this->actingAs($leader)
             ->get(route('inicio'))
             ->assertOk()
-            ->assertDontSee('Alertas atingidos');
+            ->assertSee('Alertas atingidos');
 
         $this->actingAs($operator)
             ->post(route('subtarefas.store', $project), [
@@ -138,19 +140,24 @@ class ProjectAlertTest extends TestCase
             ->assertDontSee('Alertas atingidos');
     }
 
-    public function test_alarme_ligado_sem_porcentagem_e_recusado(): void
+    public function test_alarme_em_branco_fica_desligado(): void
     {
         $this->actingAsRole(Role::Admin);
-        $subtask = Subtask::factory()->create(['name' => 'Usinagem']);
+        $subtask = Subtask::factory()->create([
+            'name' => 'Usinagem',
+            'alert_percentage' => 80,
+            'alert_enabled' => true,
+        ]);
 
-        $this->from(route('subtarefas.edit', $subtask))
-            ->put(route('subtarefas.update', $subtask), [
-                'name' => 'Usinagem',
-                'kind' => 'internal',
-                'alert_enabled' => '1',
-            ])
-            ->assertRedirect(route('subtarefas.edit', $subtask))
-            ->assertSessionHasErrors('alert_percentage');
+        $this->put(route('subtarefas.update', $subtask), [
+            'name' => 'Usinagem',
+            'kind' => 'internal',
+            'alert_percentage' => '',
+        ])->assertRedirect(route('projetos.show', $subtask->project_id));
+
+        $subtask->refresh();
+        $this->assertFalse($subtask->alert_enabled);
+        $this->assertNull($subtask->alert_percentage);
     }
 
     public function test_copia_do_projeto_leva_plano_e_deixa_realizado(): void

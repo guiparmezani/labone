@@ -14,8 +14,8 @@ class ClockController extends Controller
 {
     public function show(Request $request, Project $project, TimeClock $clock): View
     {
-        $open = $clock->openLog($request->user());
-        $open?->load('subtask.project');
+        $openLogs = $clock->openLogs($request->user());
+        $openLogs->load('subtask.project');
 
         return view('clock.show', [
             'project' => $project,
@@ -23,7 +23,7 @@ class ClockController extends Controller
                 ->where('kind', SubtaskKind::Internal)
                 ->orderBy('name')
                 ->get(['id', 'project_id', 'name', 'kind']),
-            'openLog' => $open,
+            'openLogs' => $openLogs,
         ]);
     }
 
@@ -42,8 +42,27 @@ class ClockController extends Controller
 
     public function stop(Request $request, TimeClock $clock): RedirectResponse
     {
-        $clock->stop($request->user());
+        $data = $request->validate([
+            'time_log_id' => ['nullable', 'integer'],
+        ]);
+
+        $clock->stop($request->user(), $data['time_log_id'] ?? null);
 
         return back()->with('status', 'Ponto encerrado.');
+    }
+
+    public function switchActivity(Request $request, \App\Models\TimeLog $timeLog, TimeClock $clock): RedirectResponse
+    {
+        abort_unless($request->user()?->managesProjects(), 403);
+
+        $data = $request->validate([
+            'subtask_id' => ['required', 'integer', 'exists:subtasks,id'],
+        ], [
+            'subtask_id.required' => 'Escolha a nova atividade.',
+        ]);
+
+        $clock->switchActivity($request->user(), $timeLog, Subtask::query()->findOrFail($data['subtask_id']));
+
+        return back()->with('status', 'Atividade trocada. O tempo já corrido ficou na atividade anterior.');
     }
 }

@@ -24,7 +24,6 @@ class TimeLogWriter
         $start = Formato::interpretarLocal($input['started_at']);
         $end = Formato::interpretarLocal($input['ended_at']);
         $this->assertInterval($start, $end);
-        $this->assertNoOverlap((int) $input['user_id'], $start, $end);
 
         return TimeLog::query()->create([
             'user_id' => $input['user_id'],
@@ -46,7 +45,6 @@ class TimeLogWriter
         $start = Formato::interpretarLocal($input['started_at']);
         $end = Formato::interpretarLocal($input['ended_at']);
         $this->assertInterval($start, $end);
-        $this->assertNoOverlap((int) $input['user_id'], $start, $end, $log->id);
 
         $log->fill([
             'user_id' => $input['user_id'],
@@ -57,24 +55,6 @@ class TimeLogWriter
         ])->save();
 
         return $log;
-    }
-
-    public function assertNoOverlap(int $userId, Carbon $start, Carbon $end, ?int $ignoreId = null): void
-    {
-        $conflict = TimeLog::query()
-            ->where('user_id', $userId)
-            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
-            ->where('started_at', '<', $end)
-            ->where(function ($query) use ($start) {
-                $query->whereNull('ended_at')->orWhere('ended_at', '>', $start);
-            })
-            ->exists();
-
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'started_at' => 'Este período cruza outro lançamento desta pessoa.',
-            ]);
-        }
     }
 
     private function assertInterval(Carbon $start, Carbon $end): void

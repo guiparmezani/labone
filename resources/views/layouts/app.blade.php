@@ -15,9 +15,9 @@
                 @if (auth()->user()->managesProjects())
                     <a href="{{ route('projetos.index') }}" @class(['is-current' => request()->routeIs('projetos.*')])>Projetos</a>
                     <a href="{{ route('lancamentos.index') }}" @class(['is-current' => request()->routeIs('lancamentos.*')])>Lançamentos</a>
+                    <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
                 @endif
                 @if (auth()->user()->isAdmin())
-                    <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
                     <a href="{{ route('usuarios.index') }}" @class(['is-current' => request()->routeIs('usuarios.*')])>Usuários</a>
                 @endif
             </nav>
@@ -39,5 +39,6 @@
         @yield('content')
     </main>
     <script src="{{ asset('js/timer.js') }}"></script>
+    <script src="{{ asset('js/calendario.js') }}"></script>
 </body>
 </html>

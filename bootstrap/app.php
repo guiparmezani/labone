@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'ativo' => EnsureUserIsActive::class,
             'papel' => EnsureUserHasRole::class,
         ]);
+        // Caddy termina o HTTPS. Sem confiar no proxy, o Laravel trata a página como http.
+        $middleware->trustProxies(at: '*');
         $middleware->redirectGuestsTo('/entrar');
         $middleware->redirectUsersTo('/');
     })

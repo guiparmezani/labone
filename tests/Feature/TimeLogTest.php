@@ -22,14 +22,18 @@ class TimeLogTest extends TestCase
 
         $this->get('/lancamentos')->assertForbidden();
         $this->post('/lancamentos', [])->assertForbidden();
+
+        $this->actingAsRole(Role::Leader);
+        $this->get('/lancamentos')->assertOk();
+        $this->post('/lancamentos', [])->assertForbidden();
     }
 
-    public function test_periodos_da_mesma_pessoa_nao_se_cruzam_e_pessoas_diferentes_podem(): void
+    public function test_periodos_da_mesma_pessoa_podem_se_cruzar(): void
     {
-        $leader = $this->actingAsRole(Role::Leader);
+        $admin = $this->actingAsRole(Role::Admin);
         $operator = User::factory()->operator()->create();
         $other = User::factory()->operator()->create();
-        $subtask = Subtask::factory()->create(['created_by' => $leader->id]);
+        $subtask = Subtask::factory()->create(['created_by' => $admin->id]);
 
         $payload = [
             'user_id' => $operator->id,
@@ -44,7 +48,7 @@ class TimeLogTest extends TestCase
             ...$payload,
             'started_at' => '2026-09-01T09:00',
             'ended_at' => '2026-09-01T11:00',
-        ])->assertSessionHasErrors('started_at');
+        ])->assertRedirect('/lancamentos');
 
         $this->post('/lancamentos', [
             ...$payload,
@@ -53,7 +57,7 @@ class TimeLogTest extends TestCase
             'ended_at' => '2026-09-01T11:00',
         ])->assertRedirect('/lancamentos');
 
-        $this->assertSame(2, TimeLog::query()->count());
+        $this->assertSame(3, TimeLog::query()->count());
         $this->assertSame(TimeLogSource::Manual, TimeLog::query()->first()->source);
     }
 
@@ -94,5 +98,25 @@ class TimeLogTest extends TestCase
         ]);
 
         $this->get('/lancamentos')->assertOk()->assertSee('Em andamento')->assertSee('Joana Torno');
+    }
+
+    public function test_calendario_de_lancamento_e_em_portugues(): void
+    {
+        $this->actingAsRole(Role::Admin);
+
+        $this->get('/lancamentos/novo')
+            ->assertOk()
+            ->assertDontSee('datetime-local', false)
+            ->assertSee('dd/mm/aaaa hh:mm', false)
+            ->assertSee('Hoje')
+            ->assertSee('Limpar')
+            ->assertSee('seg')
+            ->assertDontSee('Today')
+            ->assertDontSee('Clear');
+
+        $this->get('/lancamentos')
+            ->assertOk()
+            ->assertDontSee('type="date"', false)
+            ->assertSee('dd/mm/aaaa', false);
     }
 }

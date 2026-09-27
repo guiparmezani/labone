@@ -14,9 +14,14 @@
     @error('budget')<small class="error">{{ $message }}</small>@enderror
     @error('budget_cents')<small class="error">{{ $message }}</small>@enderror
 </label>
-<label class="field">
-    <span>Horas previstas</span>
-    <input type="text" name="planned_hours" inputmode="decimal" value="{{ old('planned_hours', isset($project->planned_minutes) ? \App\Support\Formato::horasEntrada($project->planned_minutes) : '') }}" required>
-    @error('planned_hours')<small class="error">{{ $message }}</small>@enderror
-    @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
-</label>
+@if (! isset($project) || auth()->user()->isAdmin())
+    <label class="field">
+        <span>Horas previstas</span>
+        <input type="text" name="planned_hours" inputmode="decimal" value="{{ old('planned_hours', isset($project->planned_minutes) ? \App\Support\Formato::horasEntrada($project->planned_minutes) : '') }}" required>
+        @error('planned_hours')<small class="error">{{ $message }}</small>@enderror
+        @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
+    </label>
+    <p class="muted">Estas horas são do projeto. As horas previstas de cada subtarefa somam por cima.</p>
+@else
+    <p>Horas previstas do projeto: {{ \App\Support\Formato::minutos($project->planned_minutes) }}. Só o administrador altera. As subtarefas somam por cima.</p>
+@endif

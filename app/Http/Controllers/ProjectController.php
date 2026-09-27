@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ProjectStatus;
+use App\Enums\SubtaskKind;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Models\Subtask;
+use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProjectController extends Controller
 {
@@ -60,12 +63,138 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
-        $project->load(['subtasks' => fn ($query) => $query->withLoggedMinutes()->orderBy('name')]);
+        $project->load(['subtasks' => fn ($query) => $query->withLoggedMinutes()->with('revisionOf')->orderBy('name')]);
 
         return view('projects.show', [
             'project' => $project,
             'internal' => $project->subtasks->where('kind', \App\Enums\SubtaskKind::Internal),
             'thirdParty' => $project->subtasks->where('kind', \App\Enums\SubtaskKind::ThirdParty),
+        ]);
+    }
+
+    public function report(Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('projects.report', $this->sheet($project));
+    }
+
+    public function export(Project $project): StreamedResponse
+    {
+        $this->authorize('view', $project);
+        $sheet = $this->sheet($project);
+
+        return $this->download($this->exportFilename($project->name), function ($out) use ($project, $sheet) {
+            fputcsv($out, ['Grupo', 'Subtarefa', 'Equipe terceira', 'Tempo previsto', 'Tempo realizado', 'Valor previsto', 'Valor realizado', 'Revisões', 'Notas'], ';');
+
+            foreach ($sheet['internal'] as $subtask) {
+                fputcsv($out, [
+                    'Equipe interna',
+                    $subtask->name,
+                    '',
+                    $this->horasCsv($subtask->planned_minutes),
+                    Formato::horasCsv($subtask->consumedMinutes()),
+                    $this->dinheiroCsv($subtask->budget_cents),
+                    $this->dinheiroCsv($subtask->realized_cents),
+                    '',
+                    '',
+                ], ';');
+            }
+
+            foreach ($sheet['thirdParty'] as $subtask) {
+                fputcsv($out, [
+                    'Equipe terceira',
+                    $subtask->name,
+                    '',
+                    $this->horasCsv($subtask->planned_minutes),
+                    '',
+                    $this->dinheiroCsv($subtask->budget_cents),
+                    $this->dinheiroCsv($subtask->realized_cents),
+                    (string) $sheet['revisions']->where('revision_of_subtask_id', $subtask->id)->count(),
+                    '',
+                ], ';');
+            }
+
+            foreach ($sheet['revisions'] as $revision) {
+                fputcsv($out, [
+                    'Revisão',
+                    $revision->name,
+                    $revision->revisionOf->name ?? '',
+                    $this->horasCsv($revision->planned_minutes),
+                    Formato::horasCsv($revision->consumedMinutes()),
+                    $this->dinheiroCsv($revision->budget_cents),
+                    $this->dinheiroCsv($revision->realized_cents),
+                    '',
+                    (string) ($revision->revision_notes ?? ''),
+                ], ';');
+            }
+
+            $previstoSubtarefas = (int) $project->subtasks->sum('budget_cents');
+            $realizado = (int) $project->subtasks->sum('realized_cents');
+
+            fputcsv($out, ['Totais', 'Horas previstas', Formato::horasCsv($project->planned_minutes).' do projeto + '.Formato::horasCsv($project->plannedMinutesFromSubtasks()).' das subtarefas', Formato::horasCsv($project->plannedMinutesTotal()), '', '', '', '', ''], ';');
+            fputcsv($out, ['Totais', 'Horas realizadas', 'Inclui o ponto em andamento', '', Formato::horasCsv($project->consumedMinutes()), '', '', '', ''], ';');
+            fputcsv($out, ['Totais', 'Valor previsto', Formato::decimal($project->budget_cents).' do projeto + '.Formato::decimal($previstoSubtarefas).' das subtarefas', '', '', Formato::decimal($project->budget_cents + $previstoSubtarefas), '', '', ''], ';');
+            fputcsv($out, ['Totais', 'Valor realizado', 'Soma do que foi digitado nas subtarefas', '', '', '', Formato::decimal($realizado), '', ''], ';');
+        });
+    }
+
+    /**
+     * @return array{project: Project, internal: \Illuminate\Support\Collection, thirdParty: \Illuminate\Support\Collection, revisions: \Illuminate\Support\Collection}
+     */
+    private function sheet(Project $project): array
+    {
+        $consumed = \App\Models\TimeLog::consumedMinutesSql('subtasks.id');
+
+        $project->load(['subtasks' => function ($query) use ($consumed) {
+            $query->withLoggedMinutes()
+                ->addSelect(DB::raw($consumed.' as consumed_minutes'))
+                ->with('revisionOf')
+                ->orderBy('name');
+        }]);
+
+        $revisions = $project->subtasks->where('is_revision', true)->values();
+        $work = $project->subtasks->reject(fn ($subtask) => $subtask->is_revision);
+
+        return [
+            'project' => $project,
+            'internal' => $work->where('kind', SubtaskKind::Internal)->values(),
+            'thirdParty' => $work->where('kind', SubtaskKind::ThirdParty)->values(),
+            'revisions' => $revisions,
+        ];
+    }
+
+    private function horasCsv(?int $minutes): string
+    {
+        return $minutes === null ? '' : Formato::horasCsv($minutes);
+    }
+
+    private function dinheiroCsv(?int $cents): string
+    {
+        return $cents === null ? '' : Formato::decimal($cents);
+    }
+
+    private function exportFilename(string $label): string
+    {
+        $clean = preg_replace('/[\\\\\\/:*?"<>|\x00-\x1F]+/u', ' ', $label) ?? '';
+        $clean = trim(preg_replace('/\s+/u', ' ', $clean) ?? '');
+
+        if ($clean === '' || $clean === '.') {
+            return 'relatorio.csv';
+        }
+
+        return $clean.'.csv';
+    }
+
+    private function download(string $filename, callable $write): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($write) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            $write($out);
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
@@ -136,8 +265,10 @@ class ProjectController extends Controller
                 'created_by' => $request->user()->id,
             ]);
 
+            $map = [];
+
             foreach ($project->subtasks as $subtask) {
-                Subtask::query()->create([
+                $created = Subtask::query()->create([
                     'project_id' => $new->id,
                     'name' => $subtask->name,
                     'kind' => $subtask->kind,
@@ -146,8 +277,21 @@ class ProjectController extends Controller
                     'realized_cents' => null,
                     'alert_percentage' => $subtask->alert_percentage,
                     'alert_enabled' => $subtask->alert_enabled,
+                    'is_revision' => $subtask->is_revision,
+                    'revision_notes' => $subtask->revision_notes,
                     'created_by' => $request->user()->id,
                 ]);
+                $map[$subtask->id] = $created->id;
+            }
+
+            foreach ($project->subtasks as $subtask) {
+                $linked = $subtask->revision_of_subtask_id;
+
+                if ($linked && isset($map[$linked], $map[$subtask->id])) {
+                    Subtask::query()->whereKey($map[$subtask->id])->update([
+                        'revision_of_subtask_id' => $map[$linked],
+                    ]);
+                }
             }
 
             return $new;

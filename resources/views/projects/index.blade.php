@@ -34,7 +34,7 @@
                         <td><a href="{{ route('projetos.show', $project) }}">{{ $project->name }}</a></td>
                         <td>{{ $project->status->label() }}</td>
                         <td>{{ \App\Support\Formato::reais($project->budget_cents) }}</td>
-                        <td>{{ \App\Support\Formato::minutos($project->planned_minutes) }}</td>
+                        <td>{{ \App\Support\Formato::minutos($project->plannedMinutesTotal()) }}</td>
                         <td>{{ \App\Support\Formato::minutos($project->loggedMinutes()) }}</td>
                         <td>{{ \App\Support\Formato::reais($project->thirdPartyBudgetCents()) }}</td>
                     </tr>

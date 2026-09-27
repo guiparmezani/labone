@@ -116,13 +116,20 @@ class ProjectTest extends TestCase
             'name' => 'Usinagem externa',
             'kind' => 'third_party',
             'budget' => '800,00',
+            'planned_hours' => '1,5',
         ])->assertRedirect('/projetos/'.$project->id);
 
         $this->assertDatabaseHas('subtasks', [
             'name' => 'Usinagem externa',
             'kind' => 'third_party',
             'budget_cents' => 80000,
+            'planned_minutes' => 90,
         ]);
+
+        $this->get('/projetos/'.$project->id)
+            ->assertSee('data-menu', false)
+            ->assertSee('nova-terceira', false)
+            ->assertDontSee('placeholder="Ex.: Tratamento térmico"', false);
 
         $project->update(['status' => 'closed', 'closed_at' => now()]);
 

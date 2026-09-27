@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ProjectStatus;
+use App\Enums\SubtaskKind;
 use App\Models\Project;
 use App\Models\Subtask;
 use App\Models\TimeLog;
@@ -17,17 +18,23 @@ class HomeController extends Controller
         $user = $request->user();
 
         if ($user->isOperator()) {
-            $open = $clock->openLog($user);
-            $open?->load('subtask.project');
+            $openLogs = $clock->openLogs($user);
+            $openLogs->load('subtask.project');
 
             return view('home.operator', [
                 'projects' => Project::query()
                     ->where('status', ProjectStatus::Open)
                     ->orderBy('name')
                     ->get(['id', 'name']),
-                'openLog' => $open,
+                'openLogs' => $openLogs,
             ]);
         }
+
+        $openLogs = TimeLog::query()
+            ->whereNull('ended_at')
+            ->with(['user', 'subtask.project'])
+            ->orderBy('started_at')
+            ->get();
 
         $data = [
             'projects' => Project::query()
@@ -35,20 +42,16 @@ class HomeController extends Controller
                 ->withTotals()
                 ->orderBy('name')
                 ->get(),
-            'openLogs' => TimeLog::query()
-                ->whereNull('ended_at')
-                ->with(['user', 'subtask.project'])
-                ->orderBy('started_at')
-                ->get(),
-        ];
-
-        if ($user->isAdmin()) {
-            $data['reachedAlerts'] = Subtask::query()
-                ->reached()
-                ->withLoggedMinutes()
+            'openLogs' => $openLogs,
+            'myOpenLogs' => $openLogs->where('user_id', $user->id)->values(),
+            'switchSubtasks' => Subtask::query()
+                ->where('kind', SubtaskKind::Internal)
+                ->whereHas('project', fn ($query) => $query->where('status', ProjectStatus::Open))
                 ->with('project')
-                ->get();
-        }
+                ->orderBy('name')
+                ->get(),
+            'reachedAlerts' => Subtask::query()->reached()->with('project')->get(),
+        ];
 
         return view('home.manager', $data);
     }

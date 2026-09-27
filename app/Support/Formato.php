@@ -75,6 +75,30 @@ class Formato
         return Carbon::instance($utc)->timezone(self::TZ)->format('Y-m-d\TH:i');
     }
 
+    /**
+     * 2026-09-25 ou 2026-09-25T19:04 viram 25/09/2026 para o campo visível.
+     */
+    public static function entradaData(?string $valor): string
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', (string) $valor, $partes) !== 1) {
+            return '';
+        }
+
+        return $partes[3].'/'.$partes[2].'/'.$partes[1];
+    }
+
+    /**
+     * 2026-09-25T19:04 vira 25/09/2026 19:04.
+     */
+    public static function entradaDataHora(?string $valor): string
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/', (string) $valor, $partes) !== 1) {
+            return '';
+        }
+
+        return $partes[3].'/'.$partes[2].'/'.$partes[1].' '.$partes[4].':'.$partes[5];
+    }
+
     public static function dataHora(CarbonInterface $utc): string
     {
         return Carbon::instance($utc)->timezone(self::TZ)->format('d/m/Y H:i');

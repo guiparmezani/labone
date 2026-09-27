@@ -67,6 +67,9 @@ class Project extends Model
                 ->selectRaw('COALESCE(SUM(budget_cents), 0)')
                 ->whereColumn('subtasks.project_id', 'projects.id')
                 ->where('kind', 'third_party'),
+            'subtask_planned_minutes' => Subtask::query()
+                ->selectRaw('COALESCE(SUM(planned_minutes), 0)')
+                ->whereColumn('subtasks.project_id', 'projects.id'),
             'logged_minutes' => TimeLog::query()
                 ->selectRaw("COALESCE(SUM({$duration}), 0)")
                 ->join('subtasks', 'subtasks.id', '=', 'time_logs.subtask_id')
@@ -84,6 +87,27 @@ class Project extends Model
         return (int) $this->subtasks()->where('kind', 'third_party')->sum('budget_cents');
     }
 
+    /**
+     * Horas previstas das subtarefas. Somam às horas previstas do projeto.
+     */
+    public function plannedMinutesFromSubtasks(): int
+    {
+        if (array_key_exists('subtask_planned_minutes', $this->attributes)) {
+            return (int) $this->attributes['subtask_planned_minutes'];
+        }
+
+        if ($this->relationLoaded('subtasks')) {
+            return (int) $this->subtasks->sum('planned_minutes');
+        }
+
+        return (int) $this->subtasks()->sum('planned_minutes');
+    }
+
+    public function plannedMinutesTotal(): int
+    {
+        return $this->planned_minutes + $this->plannedMinutesFromSubtasks();
+    }
+
     public function loggedMinutes(): int
     {
         if (array_key_exists('logged_minutes', $this->attributes)) {
@@ -98,5 +122,16 @@ class Project extends Model
             ->whereNotNull('time_logs.ended_at')
             ->selectRaw("COALESCE(SUM({$duration}), 0) as total")
             ->value('total');
+    }
+
+    /**
+     * Horas paradas mais o que ainda está correndo no projeto.
+     */
+    public function consumedMinutes(): int
+    {
+        return (int) DB::table('time_logs as tl')
+            ->join('subtasks', 'subtasks.id', '=', 'tl.subtask_id')
+            ->where('subtasks.project_id', $this->id)
+            ->rawValue('coalesce(sum(case when tl.ended_at is null then '.TimeLog::openDurationSql('tl').' else '.TimeLog::durationSql('tl').' end), 0)');
     }
 }

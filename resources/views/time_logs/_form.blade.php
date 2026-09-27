@@ -23,11 +23,21 @@
 </label>
 <label class="field">
     <span>Início</span>
-    <input type="datetime-local" name="started_at" required value="{{ old('started_at', $log ? \App\Support\Formato::local($log->started_at) : '') }}">
+    @include('partials.calendario', [
+        'nome' => 'started_at',
+        'modo' => 'datetime',
+        'obrigatorio' => true,
+        'valor' => old('started_at', $log ? \App\Support\Formato::local($log->started_at) : ''),
+    ])
     @error('started_at')<small class="error">{{ $message }}</small>@enderror
 </label>
 <label class="field">
     <span>Fim</span>
-    <input type="datetime-local" name="ended_at" required value="{{ old('ended_at', $log && $log->ended_at ? \App\Support\Formato::local($log->ended_at) : '') }}">
+    @include('partials.calendario', [
+        'nome' => 'ended_at',
+        'modo' => 'datetime',
+        'obrigatorio' => true,
+        'valor' => old('ended_at', $log && $log->ended_at ? \App\Support\Formato::local($log->ended_at) : ''),
+    ])
     @error('ended_at')<small class="error">{{ $message }}</small>@enderror
 </label>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Role;
+use App\Models\Project;
+use App\Models\User;
 use App\Services\PeriodReport;
 use App\Support\Formato;
 use Illuminate\Http\Request;
@@ -13,53 +15,39 @@ class ReportController extends Controller
 {
     public function index(Request $request): View
     {
-        $this->authorizeAdmin($request);
-        $report = PeriodReport::fromRequest($request);
+        $this->authorizeManager($request);
+        $report = PeriodReport::allTime();
 
         return view('reports.index', [
-            'report' => $report,
             'projects' => $report->projects(),
             'operators' => $report->operators(),
         ]);
     }
 
-    public function hours(Request $request): StreamedResponse
-    {
-        $this->authorizeAdmin($request);
-        $report = PeriodReport::fromRequest($request);
-
-        return $this->download('horas.csv', function ($out) use ($report) {
-            fputcsv($out, ['Data início', 'Hora início', 'Data fim', 'Hora fim', 'Horas', 'Operador', 'Projeto', 'Subtarefa'], ';');
-
-            foreach ($report->finishedLogs() as $log) {
-                fputcsv($out, [
-                    Formato::data($log->started_at),
-                    Formato::hora($log->started_at),
-                    Formato::data($log->ended_at),
-                    Formato::hora($log->ended_at),
-                    Formato::horasCsv((int) $log->minutes()),
-                    $log->user->name,
-                    $log->subtask->project->name,
-                    $log->subtask->name,
-                ], ';');
-            }
-        });
-    }
-
     public function projects(Request $request): StreamedResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeManager($request);
         $report = PeriodReport::fromRequest($request);
+        $projectId = $request->integer('project_id') ?: null;
+        $filename = 'projetos.csv';
 
-        return $this->download('projetos.csv', function ($out) use ($report) {
-            fputcsv($out, ['Projeto', 'Situação', 'Orçamento', 'Horas previstas', 'Horas lançadas no período', 'Orçamento de terceiros'], ';');
+        if ($projectId) {
+            $name = Project::query()->whereKey($projectId)->value('name');
 
-            foreach ($report->projects() as $project) {
+            if (is_string($name) && $name !== '') {
+                $filename = $this->exportFilename($name, $filename);
+            }
+        }
+
+        return $this->download($filename, function ($out) use ($report, $projectId) {
+            fputcsv($out, ['Projeto', 'Situação', 'Orçamento', 'Horas previstas', 'Horas lançadas', 'Orçamento de terceiros'], ';');
+
+            foreach ($report->projects($projectId) as $project) {
                 fputcsv($out, [
                     $project->name,
                     $project->status->label(),
                     Formato::decimal($project->budget_cents),
-                    Formato::horasCsv($project->planned_minutes),
+                    Formato::horasCsv($project->plannedMinutesTotal()),
                     Formato::horasCsv($project->loggedMinutes()),
                     Formato::decimal($project->thirdPartyBudgetCents()),
                 ], ';');
@@ -67,9 +55,54 @@ class ReportController extends Controller
         });
     }
 
-    private function authorizeAdmin(Request $request): void
+    public function people(Request $request): StreamedResponse
     {
-        abort_unless($request->user()?->isAdmin(), 403, 'Você não tem acesso a esta página.');
+        $this->authorizeManager($request);
+        $report = PeriodReport::fromRequest($request);
+        $userId = $request->integer('user_id') ?: null;
+        $filename = 'pessoas.csv';
+
+        if ($userId) {
+            $name = User::query()->whereKey($userId)->value('name');
+
+            if (is_string($name) && $name !== '') {
+                $filename = $this->exportFilename($name, $filename);
+            }
+        }
+
+        return $this->download($filename, function ($out) use ($report, $userId) {
+            fputcsv($out, ['Nome', 'Papel', 'Horas', 'Por projeto'], ';');
+
+            foreach ($report->operators($userId) as $operator) {
+                $porProjeto = $operator->projects
+                    ->map(fn ($line) => $line->name.' '.Formato::horasCsv($line->minutes))
+                    ->implode(', ');
+
+                fputcsv($out, [
+                    $operator->name,
+                    Role::from($operator->role)->label(),
+                    Formato::horasCsv($operator->minutes),
+                    $porProjeto,
+                ], ';');
+            }
+        });
+    }
+
+    private function exportFilename(string $label, string $fallback): string
+    {
+        $clean = preg_replace('/[\\\\\\/:*?"<>|\x00-\x1F]+/u', ' ', $label) ?? '';
+        $clean = trim(preg_replace('/\s+/u', ' ', $clean) ?? '');
+
+        if ($clean === '' || $clean === '.') {
+            return $fallback;
+        }
+
+        return $clean.'.csv';
+    }
+
+    private function authorizeManager(Request $request): void
+    {
+        abort_unless($request->user()?->managesProjects(), 403, 'Você não tem acesso a esta página.');
     }
 
     private function download(string $filename, callable $write): StreamedResponse

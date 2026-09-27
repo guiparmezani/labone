@@ -30,13 +30,22 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::delete('/projetos/{project}', [ProjectController::class, 'destroy'])->name('projetos.destroy');
     Route::get('/projetos/{project}/copiar', [ProjectController::class, 'copyForm'])->name('projetos.copy');
     Route::post('/projetos/{project}/copiar', [ProjectController::class, 'copy'])->name('projetos.copy.store');
+    Route::get('/projetos/{project}/relatorio', [ProjectController::class, 'report'])->name('projetos.relatorio');
+    Route::get('/projetos/{project}/relatorio.csv', [ProjectController::class, 'export'])->name('projetos.relatorio.csv');
     Route::post('/projetos/{project}/subtarefas', [SubtaskController::class, 'store'])->name('subtarefas.store');
     Route::get('/projetos/{project}/ponto', [ClockController::class, 'show'])->name('projetos.ponto');
     Route::post('/ponto/iniciar', [ClockController::class, 'start'])->name('ponto.start');
     Route::post('/ponto/parar', [ClockController::class, 'stop'])->name('ponto.stop');
 
     Route::middleware('papel:admin,leader')->group(function () {
+        Route::post('/ponto/{timeLog}/trocar', [ClockController::class, 'switchActivity'])->name('ponto.switch');
         Route::get('/lancamentos', [TimeLogController::class, 'index'])->name('lancamentos.index');
+        Route::get('/relatorios', [ReportController::class, 'index'])->name('relatorios.index');
+        Route::get('/relatorios/projetos.csv', [ReportController::class, 'projects'])->name('relatorios.projects');
+        Route::get('/relatorios/pessoas.csv', [ReportController::class, 'people'])->name('relatorios.people');
+    });
+
+    Route::middleware('papel:admin')->group(function () {
         Route::get('/lancamentos/novo', [TimeLogController::class, 'create'])->name('lancamentos.create');
         Route::post('/lancamentos', [TimeLogController::class, 'store'])->name('lancamentos.store');
         Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
@@ -48,10 +57,6 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
 
     Route::middleware('papel:admin')->group(function () {
-        Route::get('/relatorios', [ReportController::class, 'index'])->name('relatorios.index');
-        Route::get('/relatorios/horas.csv', [ReportController::class, 'hours'])->name('relatorios.hours');
-        Route::get('/relatorios/projetos.csv', [ReportController::class, 'projects'])->name('relatorios.projects');
-
         Route::resource('usuarios', UserController::class)
             ->except(['show', 'destroy'])
             ->parameters(['usuarios' => 'user']);

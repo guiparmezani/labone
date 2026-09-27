@@ -69,4 +69,26 @@ class TimeLog extends Model
             default => "CAST(ROUND((julianday({$table}.ended_at) - julianday({$table}.started_at)) * 1440) AS INTEGER)",
         };
     }
+
+    /**
+     * Minutos já corridos de um ponto ainda aberto.
+     */
+    public static function openDurationSql(string $table = 'time_logs'): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'mysql' => "TIMESTAMPDIFF(MINUTE, {$table}.started_at, UTC_TIMESTAMP())",
+            default => "CAST(ROUND((julianday('now') - julianday({$table}.started_at)) * 1440) AS INTEGER)",
+        };
+    }
+
+    /**
+     * Minutos lançados mais o que ainda está correndo na subtarefa.
+     */
+    public static function consumedMinutesSql(string $subtaskColumn = 'subtasks.id'): string
+    {
+        $finished = self::durationSql('tl');
+        $open = self::openDurationSql('tl');
+
+        return '(select coalesce(sum(case when tl.ended_at is null then '.$open.' else '.$finished.' end), 0) from time_logs as tl where tl.subtask_id = '.$subtaskColumn.')';
+    }
 }
