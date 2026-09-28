@@ -16,13 +16,13 @@ use Illuminate\Validation\ValidationException;
 class TimeLogWriter
 {
     /**
-     * @param  array{user_id: int, subtask_id: int, started_at: string, ended_at: string}  $input
+     * @param  array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}  $input
      */
     public function create(User $editor, array $input): TimeLog
     {
         $subtask = $this->internalSubtask((int) $input['subtask_id'], requireOpenProject: true);
         $start = Formato::interpretarLocal($input['started_at']);
-        $end = Formato::interpretarLocal($input['ended_at']);
+        $end = $start->copy()->addMinutes($input['duration_minutes']);
         $this->assertInterval($start, $end);
 
         return TimeLog::query()->create([
@@ -37,13 +37,13 @@ class TimeLogWriter
     }
 
     /**
-     * @param  array{user_id: int, subtask_id: int, started_at: string, ended_at: string}  $input
+     * @param  array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}  $input
      */
     public function update(User $editor, TimeLog $log, array $input): TimeLog
     {
         $subtask = $this->internalSubtask((int) $input['subtask_id'], requireOpenProject: false);
         $start = Formato::interpretarLocal($input['started_at']);
-        $end = Formato::interpretarLocal($input['ended_at']);
+        $end = $start->copy()->addMinutes($input['duration_minutes']);
         $this->assertInterval($start, $end);
 
         $log->fill([
@@ -61,13 +61,13 @@ class TimeLogWriter
     {
         if (! $end->greaterThan($start)) {
             throw ValidationException::withMessages([
-                'ended_at' => 'O fim precisa ser depois do início.',
+                'duration' => 'A duração precisa ser maior que zero.',
             ]);
         }
 
         if ($end->greaterThan(now())) {
             throw ValidationException::withMessages([
-                'ended_at' => 'O fim não pode ser no futuro.',
+                'duration' => 'A duração não pode passar do momento atual.',
             ]);
         }
     }

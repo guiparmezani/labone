@@ -53,4 +53,18 @@ class User extends Authenticatable
     {
         return $this->isAdmin() || $this->isLeader();
     }
+
+    /**
+     * Papéis que esta pessoa pode atribuir ao cadastrar ou editar um usuário.
+     *
+     * @return list<Role>
+     */
+    public function assignableRoles(): array
+    {
+        if ($this->isAdmin()) {
+            return Role::cases();
+        }
+
+        return [Role::Leader, Role::Operator];
+    }
 }

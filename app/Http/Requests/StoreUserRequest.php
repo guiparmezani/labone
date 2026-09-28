@@ -10,7 +10,7 @@ class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() ?? false;
+        return $this->user()?->managesProjects() ?? false;
     }
 
     /**
@@ -22,7 +22,10 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::enum(Role::class)],
+            'role' => ['required', Rule::in(array_map(
+                fn (Role $role) => $role->value,
+                $this->user()->assignableRoles(),
+            ))],
             'active' => ['required', 'boolean'],
         ];
     }
@@ -42,6 +45,9 @@ class StoreUserRequest extends FormRequest
             'password.required' => 'Informe a senha.',
             'password.min' => 'A senha precisa ter pelo menos 8 caracteres.',
             'role.required' => 'Escolha o papel.',
+            'role.in' => $this->user()?->isAdmin()
+                ? 'Escolha o papel.'
+                : 'Você não pode definir o papel de administrador.',
         ];
     }
 }

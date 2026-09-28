@@ -13,7 +13,7 @@ Three roles:
 | Role | Job in this version |
 |---|---|
 | Admin | Users, projects, subtasks, every time log, reports. |
-| Leader | Projects, subtasks, every time log. No reports, no user admin. |
+| Leader | Projects, subtasks, every time log, reports, and users. Can edit an existing time log the same way an admin does. Can create and edit leaders and operators, including turning an account off. Cannot create or edit an administrator. |
 | Operator | Start and stop their own timer. Add an internal subtask. |
 
 One company, one site. Interface in Brazilian Portuguese. Money in BRL. Clock and calendar in `America/Sao_Paulo`.
@@ -212,7 +212,8 @@ Enforce these on the server for every route, not only in the navigation. A forbi
 | Create an internal subtask | Yes | Yes | Yes |
 | Start and stop their own timer | Yes | Yes | Yes |
 | See every open timer | Yes | Yes | Own timer only |
-| Create, edit, delete any time log | Yes | No | No |
+| Create a manual time log | Yes | No | No |
+| Edit or delete a time log | Yes | Yes | No |
 | List historical logs | Yes | Yes | No |
 
 Any active user may clock any internal subtask of any open project. There is no assignment table.
@@ -236,14 +237,14 @@ A second open log on a different subtask is allowed. If the subtask is third-par
 
 **Switch activity.** Admin and leader. The open log is finished now, so the elapsed time stays on the old subtask, and a new open log starts now for the same person on the chosen internal subtask of an open project. This is not an edit of the hours.
 
-Operators have no other time-log actions. They never send a start time, an end time, or a duration.
+Operators have no other time-log actions. They never send a start time or a duration.
 
-**Manual log.** Admin only. Leaders can read the list.
+**Manual log.** Admin creates. Admin and leader edit and delete. Leaders can read the list.
 
-- Required: user, internal subtask, start, end.
+- Required: user, internal subtask, start, duration as `hh:mm`.
 - The project must be open.
-- End is after start.
-- End is not in the future. Start may be in the past.
+- Duration is greater than zero. The stored end is the start plus that duration.
+- That end is not in the future. Start may be in the past.
 - Overlap with another log of that same user is allowed.
 - `source = manual`.
 
@@ -312,11 +313,11 @@ Operator project screen, reached from Início: project name as a heading, then i
 
 Admin and leader. Filter by project, user, and a date range on `started_at`. Default range is the current month in São Paulo.
 
-Columns: operator, project, subtask, start, end, duration as `Hh MMmin`.
+Columns: operator, project, subtask, start, duration as `Hh MMmin`. The end is not shown. It is the start plus the duration.
 
-**Novo lançamento**, edit, and delete are admin only. Delete asks for a confirm. A leader can open the list and cannot change a row.
+**Novo lançamento** is admin only. Admin and leader can edit an existing row: person, subtask, start, and duration as `hh:mm`. **Apagar** asks for a confirm and is available to admin and leader.
 
-Open logs appear in this list with end shown as "Em andamento" and no duration.
+Open logs appear in this list with duration shown as "Em andamento".
 
 ### Relatórios
 
@@ -333,18 +334,18 @@ Admin and leader. One page, two blocks, all finished time. There is no date filt
 
 **Por operador.** One row per user who has finished logs. Columns: name, role, hours, and hours per project.
 
-A row is clickable. It opens a lightbox with optional De and Até. Empty dates export all time. A filled date is a São Paulo day, inclusive, matched on `started_at`. **Exportar tudo** under each block downloads that whole block with no date limit.
+A project row opens that project's printable sheet: equipe interna, equipe terceira, revisões, and the totals. **Exportar** at the bottom of the sheet downloads it. A person row opens a lightbox with optional De and Até. Empty dates export all time. A filled date is a São Paulo day, inclusive, matched on `started_at`. **Exportar tudo** under each block downloads that whole block with no date limit.
 
 - `projetos.csv` — the whole project block. One project, when `project_id` is set, downloads as that project's name plus `.csv`
 - `pessoas.csv` — the whole operator block. One person, when `user_id` is set, downloads as that person's name plus `.csv`. Columns: nome, papel, horas, por projeto
 
 CSV is UTF-8 with BOM, field separator `;`, so Excel in Portuguese opens it in columns. Hours as decimal with a comma, two places (`1,50`). Money as decimal with a comma, two places, no currency symbol.
 
-Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money typed on the subtasks. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** downloads that sheet as `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine.
+Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money typed on the subtasks. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** sits at the bottom of the sheet and downloads it as `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine.
 
 ### Usuários
 
-Admin only. Name, email, role, active, password on create, optional new password on edit. Role labels: Administrador, Líder, Operador.
+Admin and leader. Name, email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. Only an admin can create an administrator or open an administrator’s edit form.
 
 ## 9. Validation copy
 
@@ -355,8 +356,9 @@ Return the message in Portuguese next to the field.
 | Bad login | E-mail ou senha inválidos. |
 | Same subtask already running | Esta subtarefa já está em andamento. |
 | Third-party or closed | Este item não aceita ponto. |
-| End before start | O fim precisa ser depois do início. |
-| End in the future | O fim não pode ser no futuro. |
+| Duration is zero | A duração precisa ser maior que zero. |
+| Duration would end in the future | A duração não pode passar do momento atual. |
+| Duration is not hh:mm | Informe a duração no formato hh:mm. |
 | Revision linked to the wrong row | A revisão precisa apontar para uma equipe terceira deste projeto. |
 | Delete project or subtask that has logs | Este item tem lançamentos. Encerre o projeto em vez de apagar. |
 | Operator hits a leader URL | 403 page: Você não tem acesso a esta página. |
@@ -371,7 +373,7 @@ Return the message in Portuguese next to the field.
 | Hours in CSV | Decimal comma, two places |
 | Empty totals | `0h 00min` and `R$ 0,00` for admin and leader. Operator screens do not render these at all. |
 
-Planned hours on a form are edited as a decimal hour value. Everywhere else, people read `Hh MMmin`.
+Project planned hours on a form are edited as a decimal hour value. Subtask tempo previsto and a time-log duration are edited as `hh:mm`. Everywhere else, people read `Hh MMmin`.
 
 ## 11. Routes
 
@@ -380,8 +382,8 @@ Planned hours on a form are edited as a decimal hour value. Everywhere else, peo
 | GET, POST | `/entrar` | guest |
 | POST | `/sair` | any |
 | GET | `/` | any |
-| GET, POST | `/usuarios` | admin |
-| PUT | `/usuarios/{user}` | admin |
+| GET, POST | `/usuarios` | admin, leader |
+| PUT | `/usuarios/{user}` | admin, leader |
 | GET, POST | `/projetos` | admin, leader |
 | GET, PUT | `/projetos/{project}` | admin, leader for manage; operator GET is the start screen at `/projetos/{project}/ponto` |
 | POST | `/projetos/{project}/encerrar` | admin, leader |
@@ -394,8 +396,10 @@ Planned hours on a form are edited as a decimal hour value. Everywhere else, peo
 | GET | `/projetos/{project}/ponto` | any |
 | POST | `/ponto/iniciar` | any |
 | POST | `/ponto/parar` | any |
-| GET, POST | `/lancamentos` | admin, leader |
-| PUT, DELETE | `/lancamentos/{timeLog}` | admin, leader |
+| GET | `/lancamentos` | admin, leader |
+| POST | `/lancamentos` | admin |
+| GET, PUT | `/lancamentos/{timeLog}` | admin, leader |
+| DELETE | `/lancamentos/{timeLog}` | admin, leader |
 | GET | `/relatorios` | admin, leader |
 | GET | `/relatorios/projetos.csv` | admin, leader |
 | GET | `/relatorios/pessoas.csv` | admin, leader |
@@ -439,7 +443,7 @@ Entregar ao cliente uma nota curta em português: como entrar, o que cada papel 
 Feature tests, hitting the real routes:
 
 1. Operator receives 403 on `/usuarios`, `/lancamentos`, `/relatorios`, and both CSV URLs.
-2. Leader receives 403 on `/usuarios` and on creating or editing a time log. Leader can open `/relatorios`.
+2. Leader can open `/usuarios`, create a leader or operator, and turn that account off. Leader receives 403 when editing an administrator, and cannot assign the administrator role. Leader can edit or delete an existing time log and receives 403 on creating one. Leader can open `/relatorios`.
 3. Operator HTML for `/` and `/projetos/{id}/ponto` does not contain the project's budget, planned hours, or any logged total. Build the fixture with a distinctive amount such as `R$ 9.876,54` and assert it is absent.
 4. Operator cannot post a manual log, a third-party subtask, or a project.
 5. A second start on a different subtask succeeds. A second start on the same subtask fails and leaves the first open row.

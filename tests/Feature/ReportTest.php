@@ -18,13 +18,16 @@ class ReportTest extends TestCase
 
     public function test_lider_abre_relatorio_e_operador_nao(): void
     {
+        $folha = Project::factory()->create(['name' => 'Folha visível']);
+
         $this->actingAsRole(Role::Leader);
         $this->get('/relatorios')
             ->assertOk()
             ->assertSee('Exportar tudo')
             ->assertDontSee('Exportar horas')
             ->assertDontSee('Exportar projetos')
-            ->assertSee('Sem datas, o relatório cobre todo o histórico.');
+            ->assertSee('Sem datas, o relatório cobre todo o histórico.')
+            ->assertSee('/projetos/'.$folha->id.'/relatorio', false);
         $this->get('/relatorios/pessoas.csv')->assertOk();
         $this->get('/relatorios/projetos.csv')->assertOk();
 

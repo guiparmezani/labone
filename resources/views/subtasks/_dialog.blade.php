@@ -11,7 +11,7 @@
     $nome = $enviado ? old('name') : ($subtask->name ?? '');
     $horas = $enviado
         ? old('planned_hours')
-        : ($subtask?->planned_minutes !== null ? Formato::horasEntrada($subtask->planned_minutes) : '');
+        : ($subtask?->planned_minutes !== null ? Formato::duracaoEntrada($subtask->planned_minutes) : '');
     $orcamento = $enviado
         ? old('budget')
         : ($subtask?->budget_cents !== null ? Formato::reaisEntrada($subtask->budget_cents) : '');
@@ -70,7 +70,7 @@
         @if ($podeHoras)
             <label class="field">
                 <span>Tempo previsto</span>
-                <input type="text" name="planned_hours" inputmode="decimal" value="{{ $horas }}" placeholder="1,5">
+                <input type="text" name="planned_hours" inputmode="numeric" value="{{ $horas }}" placeholder="hh:mm">
                 @if ($enviado)
                     @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
                 @endif
@@ -106,7 +106,6 @@
                 @error('alert_percentage')<small class="error">{{ $message }}</small>@enderror
             @endif
         </label>
-        <p class="muted">Se preenchido, o alarme aparece no início quando as horas consumidas, com o ponto aberto, chegam nessa porcentagem do tempo previsto.</p>
 
         <label class="check">
             <input class="revision-toggle" type="checkbox" name="is_revision" value="1" @checked($revisao)>

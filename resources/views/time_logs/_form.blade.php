@@ -32,12 +32,7 @@
     @error('started_at')<small class="error">{{ $message }}</small>@enderror
 </label>
 <label class="field">
-    <span>Fim</span>
-    @include('partials.calendario', [
-        'nome' => 'ended_at',
-        'modo' => 'datetime',
-        'obrigatorio' => true,
-        'valor' => old('ended_at', $log && $log->ended_at ? \App\Support\Formato::local($log->ended_at) : ''),
-    ])
-    @error('ended_at')<small class="error">{{ $message }}</small>@enderror
+    <span>Duração</span>
+    <input type="text" name="duration" inputmode="numeric" placeholder="hh:mm" required value="{{ old('duration', $log && $log->ended_at ? \App\Support\Formato::duracaoEntrada($log->minutes()) : '') }}">
+    @error('duration')<small class="error">{{ $message }}</small>@enderror
 </label>

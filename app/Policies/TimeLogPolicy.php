@@ -19,11 +19,11 @@ class TimeLogPolicy
 
     public function update(User $user, TimeLog $timeLog): bool
     {
-        return $user->isAdmin();
+        return $user->managesProjects();
     }
 
     public function delete(User $user, TimeLog $timeLog): bool
     {
-        return $user->isAdmin();
+        return $user->managesProjects();
     }
 }

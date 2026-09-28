@@ -15,7 +15,6 @@
             <p class="muted">Para guardar como referência de um trabalho parecido.</p>
         </div>
         <div class="actions">
-            <a class="btn btn-primary" href="{{ route('projetos.relatorio.csv', $project) }}">Exportar</a>
             <a class="btn btn-ghost" href="{{ route('projetos.show', $project) }}">Voltar</a>
         </div>
     </div>
@@ -133,6 +132,10 @@
                 <strong>{{ Formato::reais($realizado) }}</strong>
                 <p class="muted">Soma do que foi digitado nas subtarefas</p>
             </div>
+        </div>
+
+        <div class="sheet-download no-print">
+            <a class="btn btn-primary" href="{{ route('projetos.relatorio.csv', $project) }}">Exportar</a>
         </div>
     </section>
 @endsection

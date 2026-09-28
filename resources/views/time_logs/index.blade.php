@@ -46,7 +46,6 @@
                     <th>Projeto</th>
                     <th>Subtarefa</th>
                     <th>Início</th>
-                    <th>Fim</th>
                     <th>Duração</th>
                     <th></th>
                 </tr>
@@ -58,20 +57,21 @@
                         <td>{{ $log->subtask->project->name }}</td>
                         <td>{{ $log->subtask->name }}</td>
                         <td>{{ \App\Support\Formato::dataHora($log->started_at) }}</td>
-                        <td>{{ $log->ended_at ? \App\Support\Formato::dataHora($log->ended_at) : 'Em andamento' }}</td>
-                        <td>{{ $log->minutes() === null ? '—' : \App\Support\Formato::minutos($log->minutes()) }}</td>
+                        <td>{{ $log->minutes() === null ? 'Em andamento' : \App\Support\Formato::minutos($log->minutes()) }}</td>
                         <td class="cell-end">
-                            @if (auth()->user()->isAdmin())
+                            @can('update', $log)
                                 <a href="{{ route('lancamentos.edit', $log) }}">Editar</a>
+                            @endcan
+                            @can('delete', $log)
                                 <form method="POST" action="{{ route('lancamentos.destroy', $log) }}" style="display:inline" onsubmit="return confirm('Apagar este lançamento?')">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-danger" type="submit">Apagar</button>
                                 </form>
-                            @endif
+                            @endcan
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">Nenhum lançamento neste período.</td></tr>
+                    <tr><td colspan="6">Nenhum lançamento neste período.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -27,7 +27,7 @@ class UserController extends Controller
         $this->authorize('create', User::class);
 
         return view('users.create', [
-            'roles' => Role::cases(),
+            'roles' => auth()->user()->assignableRoles(),
         ]);
     }
 
@@ -44,7 +44,7 @@ class UserController extends Controller
 
         return view('users.edit', [
             'user' => $user,
-            'roles' => Role::cases(),
+            'roles' => auth()->user()->assignableRoles(),
         ]);
     }
 

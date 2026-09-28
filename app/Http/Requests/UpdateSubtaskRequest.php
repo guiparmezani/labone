@@ -95,7 +95,7 @@ class UpdateSubtaskRequest extends FormRequest
             'budget_cents.required' => 'Informe o valor previsto.',
             'budget_cents.integer' => 'Informe o valor previsto em reais.',
             'budget_cents.min' => 'O valor previsto não pode ser negativo.',
-            'planned_minutes.integer' => 'Informe o tempo previsto com um número.',
+            'planned_minutes.integer' => 'Informe o tempo previsto no formato hh:mm.',
             'planned_minutes.min' => 'O tempo previsto não pode ser negativo.',
             'realized_cents.integer' => 'Informe o valor realizado em reais.',
             'realized_cents.min' => 'O valor realizado não pode ser negativo.',
@@ -129,6 +129,6 @@ class UpdateSubtaskRequest extends FormRequest
             return null;
         }
 
-        return Formato::minutosDeHoras($raw) ?? 'invalid';
+        return Formato::minutosDeDuracao($raw) ?? 'invalid';
     }
 }

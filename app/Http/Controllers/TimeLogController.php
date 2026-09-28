@@ -10,6 +10,7 @@ use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TimeLogController extends Controller
@@ -105,7 +106,7 @@ class TimeLogController extends Controller
     }
 
     /**
-     * @return array{user_id: int, subtask_id: int, started_at: string, ended_at: string}
+     * @return array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}
      */
     private function validated(Request $request): array
     {
@@ -113,19 +114,27 @@ class TimeLogController extends Controller
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'subtask_id' => ['required', 'integer', 'exists:subtasks,id'],
             'started_at' => ['required', 'date'],
-            'ended_at' => ['required', 'date'],
+            'duration' => ['required', 'string'],
         ], [
             'user_id.required' => 'Escolha a pessoa.',
             'subtask_id.required' => 'Escolha a subtarefa.',
             'started_at.required' => 'Informe o início.',
-            'ended_at.required' => 'Informe o fim.',
+            'duration.required' => 'Informe a duração.',
         ]);
+
+        $minutes = Formato::minutosDeDuracao($data['duration']);
+
+        if ($minutes === null) {
+            throw ValidationException::withMessages([
+                'duration' => 'Informe a duração no formato hh:mm.',
+            ]);
+        }
 
         return [
             'user_id' => (int) $data['user_id'],
             'subtask_id' => (int) $data['subtask_id'],
             'started_at' => $data['started_at'],
-            'ended_at' => $data['ended_at'],
+            'duration_minutes' => $minutes,
         ];
     }
 

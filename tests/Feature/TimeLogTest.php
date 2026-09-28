@@ -26,6 +26,44 @@ class TimeLogTest extends TestCase
         $this->actingAsRole(Role::Leader);
         $this->get('/lancamentos')->assertOk();
         $this->post('/lancamentos', [])->assertForbidden();
+        $this->get('/lancamentos/novo')->assertForbidden();
+    }
+
+    public function test_lider_edita_lancamento_e_nao_apaga(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $operator = User::factory()->operator()->create();
+        $subtask = Subtask::factory()->create();
+        $log = TimeLog::factory()->create([
+            'user_id' => $operator->id,
+            'subtask_id' => $subtask->id,
+            'started_at' => Carbon::now(Formato::TZ)->subHours(3)->utc(),
+            'ended_at' => Carbon::now(Formato::TZ)->subHours(2)->utc(),
+            'created_by' => $operator->id,
+            'updated_by' => $operator->id,
+        ]);
+
+        $this->get('/lancamentos')->assertOk()->assertSee('Editar')->assertSee('Apagar')->assertDontSee('<th>Fim</th>', false);
+        $this->get('/lancamentos/'.$log->id.'/editar')
+            ->assertOk()
+            ->assertSee('Editar lançamento')
+            ->assertSee('Duração')
+            ->assertDontSee('name="ended_at"', false);
+
+        $inicio = Carbon::now(Formato::TZ)->subHours(4)->startOfMinute();
+
+        $this->put('/lancamentos/'.$log->id, [
+            'user_id' => $operator->id,
+            'subtask_id' => $subtask->id,
+            'started_at' => $inicio->format('Y-m-d\TH:i'),
+            'duration' => '02:00',
+        ])->assertRedirect('/lancamentos');
+
+        $log->refresh();
+        $this->assertSame($leader->id, $log->updated_by);
+        $this->assertSame(120, $log->minutes());
+        $this->delete('/lancamentos/'.$log->id)->assertRedirect('/lancamentos');
+        $this->assertModelMissing($log);
     }
 
     public function test_periodos_da_mesma_pessoa_podem_se_cruzar(): void
@@ -39,7 +77,7 @@ class TimeLogTest extends TestCase
             'user_id' => $operator->id,
             'subtask_id' => $subtask->id,
             'started_at' => '2026-09-01T08:00',
-            'ended_at' => '2026-09-01T10:00',
+            'duration' => '02:00',
         ];
 
         $this->post('/lancamentos', $payload)->assertRedirect('/lancamentos');
@@ -47,41 +85,47 @@ class TimeLogTest extends TestCase
         $this->post('/lancamentos', [
             ...$payload,
             'started_at' => '2026-09-01T09:00',
-            'ended_at' => '2026-09-01T11:00',
+            'duration' => '02:00',
         ])->assertRedirect('/lancamentos');
 
         $this->post('/lancamentos', [
             ...$payload,
             'user_id' => $other->id,
             'started_at' => '2026-09-01T09:00',
-            'ended_at' => '2026-09-01T11:00',
+            'duration' => '02:00',
         ])->assertRedirect('/lancamentos');
 
         $this->assertSame(3, TimeLog::query()->count());
         $this->assertSame(TimeLogSource::Manual, TimeLog::query()->first()->source);
     }
 
-    public function test_fim_antes_do_inicio_e_fim_no_futuro_sao_recusados(): void
+    public function test_duracao_zerada_e_duracao_no_futuro_sao_recusadas(): void
     {
         $this->actingAsRole(Role::Admin);
         $operator = User::factory()->create();
         $subtask = Subtask::factory()->create();
-        $future = Carbon::now(Formato::TZ)->addDay()->format('Y-m-d\TH:i');
-        $past = Carbon::now(Formato::TZ)->subDay()->format('Y-m-d\TH:i');
+        $past = Carbon::now(Formato::TZ)->subHour()->format('Y-m-d\TH:i');
 
         $this->post('/lancamentos', [
             'user_id' => $operator->id,
             'subtask_id' => $subtask->id,
             'started_at' => '2026-09-01T10:00',
-            'ended_at' => '2026-09-01T09:00',
-        ])->assertSessionHasErrors('ended_at');
+            'duration' => '00:00',
+        ])->assertSessionHasErrors('duration');
 
         $this->post('/lancamentos', [
             'user_id' => $operator->id,
             'subtask_id' => $subtask->id,
             'started_at' => $past,
-            'ended_at' => $future,
-        ])->assertSessionHasErrors('ended_at');
+            'duration' => '05:00',
+        ])->assertSessionHasErrors('duration');
+
+        $this->post('/lancamentos', [
+            'user_id' => $operator->id,
+            'subtask_id' => $subtask->id,
+            'started_at' => $past,
+            'duration' => '1,5',
+        ])->assertSessionHasErrors('duration');
     }
 
     public function test_ponto_aberto_aparece_sem_duracao_no_periodo(): void

@@ -112,11 +112,16 @@ class ProjectTest extends TestCase
             ->assertOk()
             ->assertSee('Adicionar equipe terceira');
 
+        $this->get('/projetos/'.$project->id)
+            ->assertOk()
+            ->assertSee('placeholder="hh:mm"', false)
+            ->assertDontSee('Se preenchido, o alarme aparece', false);
+
         $this->post('/projetos/'.$project->id.'/subtarefas', [
             'name' => 'Usinagem externa',
             'kind' => 'third_party',
             'budget' => '800,00',
-            'planned_hours' => '1,5',
+            'planned_hours' => '01:30',
         ])->assertRedirect('/projetos/'.$project->id);
 
         $this->assertDatabaseHas('subtasks', [

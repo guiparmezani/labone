@@ -28,7 +28,7 @@
             @if (auth()->user()->isAdmin())
                 <label class="field">
                     <span>Tempo previsto</span>
-                    <input type="text" name="planned_hours" inputmode="decimal" value="{{ old('planned_hours', $subtask->planned_minutes !== null ? Formato::horasEntrada($subtask->planned_minutes) : '') }}" placeholder="1,5">
+                    <input type="text" name="planned_hours" inputmode="numeric" value="{{ old('planned_hours', $subtask->planned_minutes !== null ? Formato::duracaoEntrada($subtask->planned_minutes) : '') }}" placeholder="hh:mm">
                     @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
                 </label>
             @else
@@ -53,7 +53,6 @@
                 <input type="number" name="alert_percentage" min="1" max="100" step="1" value="{{ old('alert_percentage', $subtask->alert_enabled ? $subtask->alert_percentage : '') }}">
                 @error('alert_percentage')<small class="error">{{ $message }}</small>@enderror
             </label>
-            <p class="muted">Se preenchido, o alarme aparece no início quando as horas consumidas, com o ponto aberto, chegam nessa porcentagem do tempo previsto.</p>
             <label class="check">
                 <input class="revision-toggle" type="checkbox" name="is_revision" value="1" @checked(session()->hasOldInput() ? (bool) old('is_revision') : $subtask->is_revision)>
                 <span>Revisão</span>

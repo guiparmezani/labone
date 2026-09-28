@@ -11,7 +11,10 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() ?? false;
+        $actor = $this->user();
+        $target = $this->route('user');
+
+        return $actor !== null && $target instanceof User && $actor->can('update', $target);
     }
 
     /**
@@ -26,7 +29,10 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', Rule::enum(Role::class)],
+            'role' => ['required', Rule::in(array_map(
+                fn (Role $role) => $role->value,
+                $this->user()->assignableRoles(),
+            ))],
             'active' => ['required', 'boolean'],
         ];
     }
@@ -45,6 +51,9 @@ class UpdateUserRequest extends FormRequest
             'email.unique' => 'Este e-mail já está em uso.',
             'password.min' => 'A senha precisa ter pelo menos 8 caracteres.',
             'role.required' => 'Escolha o papel.',
+            'role.in' => $this->user()?->isAdmin()
+                ? 'Escolha o papel.'
+                : 'Você não pode definir o papel de administrador.',
         ];
     }
 }

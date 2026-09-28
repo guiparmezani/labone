@@ -17,7 +17,7 @@
                     <a href="{{ route('lancamentos.index') }}" @class(['is-current' => request()->routeIs('lancamentos.*')])>Lançamentos</a>
                     <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
                 @endif
-                @if (auth()->user()->isAdmin())
+                @if (auth()->user()->managesProjects())
                     <a href="{{ route('usuarios.index') }}" @class(['is-current' => request()->routeIs('usuarios.*')])>Usuários</a>
                 @endif
             </nav>

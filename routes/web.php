@@ -40,6 +40,9 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::middleware('papel:admin,leader')->group(function () {
         Route::post('/ponto/{timeLog}/trocar', [ClockController::class, 'switchActivity'])->name('ponto.switch');
         Route::get('/lancamentos', [TimeLogController::class, 'index'])->name('lancamentos.index');
+        Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
+        Route::put('/lancamentos/{timeLog}', [TimeLogController::class, 'update'])->name('lancamentos.update');
+        Route::delete('/lancamentos/{timeLog}', [TimeLogController::class, 'destroy'])->name('lancamentos.destroy');
         Route::get('/relatorios', [ReportController::class, 'index'])->name('relatorios.index');
         Route::get('/relatorios/projetos.csv', [ReportController::class, 'projects'])->name('relatorios.projects');
         Route::get('/relatorios/pessoas.csv', [ReportController::class, 'people'])->name('relatorios.people');
@@ -48,15 +51,12 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::middleware('papel:admin')->group(function () {
         Route::get('/lancamentos/novo', [TimeLogController::class, 'create'])->name('lancamentos.create');
         Route::post('/lancamentos', [TimeLogController::class, 'store'])->name('lancamentos.store');
-        Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
-        Route::put('/lancamentos/{timeLog}', [TimeLogController::class, 'update'])->name('lancamentos.update');
-        Route::delete('/lancamentos/{timeLog}', [TimeLogController::class, 'destroy'])->name('lancamentos.destroy');
     });
     Route::get('/subtarefas/{subtask}/editar', [SubtaskController::class, 'edit'])->name('subtarefas.edit');
     Route::put('/subtarefas/{subtask}', [SubtaskController::class, 'update'])->name('subtarefas.update');
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
 
-    Route::middleware('papel:admin')->group(function () {
+    Route::middleware('papel:admin,leader')->group(function () {
         Route::resource('usuarios', UserController::class)
             ->except(['show', 'destroy'])
             ->parameters(['usuarios' => 'user']);

@@ -28,7 +28,7 @@
                 </thead>
                 <tbody>
                     @forelse ($projects as $project)
-                        <tr class="is-clickable" tabindex="0" data-exportar="projeto" data-id="{{ $project->id }}" data-nome="{{ $project->name }}">
+                        <tr class="is-clickable" tabindex="0" data-folha="{{ route('projetos.relatorio', $project) }}">
                             <td>{{ $project->name }}</td>
                             <td>{{ $project->status->label() }}</td>
                             <td>{{ Formato::reais($project->budget_cents) }}</td>
@@ -79,7 +79,7 @@
     </section>
 
     <dialog class="lightbox" id="exportar">
-        <form method="GET" id="exportar-form" class="stack" data-projetos="{{ route('relatorios.projects') }}" data-pessoas="{{ route('relatorios.people') }}">
+        <form method="GET" id="exportar-form" class="stack" action="{{ route('relatorios.people') }}">
             <div class="lightbox-intro">
                 <h2 id="exportar-titulo"></h2>
                 <p class="muted">Sem datas, o relatório cobre todo o histórico.</p>
@@ -92,8 +92,7 @@
                 <span>Até</span>
                 @include('partials.calendario', ['nome' => 'to'])
             </label>
-            <input type="hidden" name="project_id" value="" disabled>
-            <input type="hidden" name="user_id" value="" disabled>
+            <input type="hidden" name="user_id" value="">
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Exportar</button>
                 <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
@@ -106,7 +105,6 @@
             var dialog = document.getElementById('exportar');
             var form = document.getElementById('exportar-form');
             var titulo = document.getElementById('exportar-titulo');
-            var projeto = form.querySelector('[name="project_id"]');
             var pessoa = form.querySelector('[name="user_id"]');
 
             function limparDatas() {
@@ -121,23 +119,21 @@
                 limparDatas();
                 titulo.tabIndex = -1;
                 titulo.textContent = linha.dataset.nome;
-                if (linha.dataset.exportar === 'projeto') {
-                    form.action = form.dataset.projetos;
-                    projeto.disabled = false;
-                    projeto.value = linha.dataset.id;
-                    pessoa.disabled = true;
-                    pessoa.value = '';
-                } else {
-                    form.action = form.dataset.pessoas;
-                    pessoa.disabled = false;
-                    pessoa.value = linha.dataset.id;
-                    projeto.disabled = true;
-                    projeto.value = '';
-                }
+                pessoa.value = linha.dataset.id;
                 dialog.showModal();
                 limparDatas();
                 titulo.focus();
             }
+
+            document.querySelectorAll('[data-folha]').forEach(function (linha) {
+                linha.addEventListener('click', function () { window.location = linha.dataset.folha; });
+                linha.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        window.location = linha.dataset.folha;
+                    }
+                });
+            });
 
             document.querySelectorAll('[data-exportar]').forEach(function (linha) {
                 linha.addEventListener('click', function () { abrir(linha); });

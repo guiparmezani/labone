@@ -24,7 +24,11 @@
                         <td>{{ $user->email }}</td>
                         <td>{{ $user->role->label() }}</td>
                         <td>{{ $user->active ? 'Ativa' : 'Inativa' }}</td>
-                        <td class="cell-end"><a href="{{ route('usuarios.edit', $user) }}">Editar</a></td>
+                        <td class="cell-end">
+                            @can('update', $user)
+                                <a href="{{ route('usuarios.edit', $user) }}">Editar</a>
+                            @endcan
+                        </td>
                     </tr>
                 @empty
                     <tr>
