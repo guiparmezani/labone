@@ -31,6 +31,11 @@ class ProjectTest extends TestCase
     {
         $leader = $this->actingAsRole(Role::Leader);
 
+        $this->get('/projetos/novo')
+            ->assertOk()
+            ->assertSee('name="planned_hours"', false)
+            ->assertDontSee('Só o administrador altera', false);
+
         $this->post('/projetos', [
             'name' => 'Molde da tampa',
             'notes' => 'Cliente interno',
@@ -44,6 +49,10 @@ class ProjectTest extends TestCase
         $this->assertSame(90, $project->planned_minutes);
         $this->assertSame($leader->id, $project->created_by);
         $this->get('/projetos')->assertSee('R$ 1.234,56')->assertSee('1h 30min');
+        $this->get('/projetos/'.$project->id.'/editar')
+            ->assertOk()
+            ->assertSee('Só o administrador altera')
+            ->assertDontSee('name="planned_hours"', false);
     }
 
     public function test_encerra_e_reabre_sem_apagar_historico(): void

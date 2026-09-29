@@ -14,7 +14,7 @@
     @error('budget')<small class="error">{{ $message }}</small>@enderror
     @error('budget_cents')<small class="error">{{ $message }}</small>@enderror
 </label>
-@if (! isset($project) || auth()->user()->isAdmin())
+@if (! isset($project) || ! $project->exists || auth()->user()->isAdmin())
     <label class="field">
         <span>Horas previstas</span>
         <input type="text" name="planned_hours" inputmode="decimal" value="{{ old('planned_hours', isset($project->planned_minutes) ? \App\Support\Formato::horasEntrada($project->planned_minutes) : '') }}" required>
