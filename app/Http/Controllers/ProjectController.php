@@ -8,11 +8,14 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Models\Subtask;
+use App\Services\ProjectCsvImport;
 use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProjectController extends Controller
@@ -57,6 +60,60 @@ class ProjectController extends Controller
         ]);
 
         return redirect()->route('projetos.show', $project)->with('status', 'Projeto criado.');
+    }
+
+    public function import(Request $request, ProjectCsvImport $import): RedirectResponse
+    {
+        $this->authorize('create', Project::class);
+
+        $request->validate([
+            'arquivo' => ['required', 'file', 'extensions:csv,txt', 'max:5120'],
+        ], [
+            'arquivo.required' => 'Escolha um arquivo .CSV.',
+            'arquivo.file' => 'Escolha um arquivo .CSV.',
+            'arquivo.extensions' => 'O arquivo precisa ser um .CSV.',
+            'arquivo.max' => 'O arquivo pode ter no máximo 5 MB.',
+        ]);
+
+        $contents = file_get_contents($request->file('arquivo')->getRealPath());
+
+        try {
+            $lista = $import->read($contents === false ? '' : $contents);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'arquivo' => $exception->getMessage(),
+            ]);
+        }
+
+        $project = DB::transaction(function () use ($request, $lista) {
+            $project = Project::query()->create([
+                'name' => $lista['name'],
+                'notes' => null,
+                'status' => ProjectStatus::Open,
+                'budget_cents' => 0,
+                'planned_minutes' => 0,
+                'created_by' => $request->user()->id,
+            ]);
+
+            foreach ($lista['tasks'] as $name) {
+                $project->subtasks()->create([
+                    'name' => $name,
+                    'kind' => SubtaskKind::Internal,
+                    'created_by' => $request->user()->id,
+                ]);
+            }
+
+            return $project;
+        });
+
+        $quantidade = count($lista['tasks']);
+        $mensagem = match (true) {
+            $quantidade === 1 => 'Projeto importado com 1 tarefa.',
+            $quantidade > 1 => "Projeto importado com {$quantidade} tarefas.",
+            default => 'Projeto importado.',
+        };
+
+        return redirect()->route('projetos.show', $project)->with('status', $mensagem);
     }
 
     public function show(Project $project): View

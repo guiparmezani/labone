@@ -9,6 +9,7 @@ use App\Models\Subtask;
 use App\Models\TimeLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
@@ -36,6 +37,19 @@ class ProjectTest extends TestCase
             ->assertSee('name="planned_hours"', false)
             ->assertDontSee('Só o administrador altera', false);
 
+        $this->get('/projetos')
+            ->assertOk()
+            ->assertSee('data-abrir="novo-projeto"', false)
+            ->assertSee('id="novo-projeto"', false);
+
+        $this->followingRedirects()->from('/projetos')->post('/projetos', [
+            'lightbox' => 'novo-projeto',
+            'name' => '',
+            'budget' => '10,00',
+            'planned_hours' => '1',
+        ])->assertSee('Informe o nome do projeto.')
+            ->assertSee('document.getElementById("novo-projeto")?.showModal();', false);
+
         $this->post('/projetos', [
             'name' => 'Molde da tampa',
             'notes' => 'Cliente interno',
@@ -46,6 +60,14 @@ class ProjectTest extends TestCase
         $project = Project::query()->first();
         $this->assertNotNull($project);
         $this->assertSame(123456, $project->budget_cents);
+
+        $this->post('/projetos', [
+            'name' => 'Sem orçamento',
+            'budget' => '',
+            'planned_hours' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(0, Project::query()->where('name', 'Sem orçamento')->value('budget_cents'));
         $this->assertSame(90, $project->planned_minutes);
         $this->assertSame($leader->id, $project->created_by);
         $this->get('/projetos')->assertSee('R$ 1.234,56')->assertSee('1h 30min');
@@ -119,7 +141,9 @@ class ProjectTest extends TestCase
 
         $this->get('/projetos/'.$project->id)
             ->assertOk()
-            ->assertSee('Adicionar equipe terceira');
+            ->assertSee('Adicionar equipe terceira')
+            ->assertSee('>Editar</a>', false)
+            ->assertSee('/projetos/'.$project->id.'/editar', false);
 
         $this->get('/projetos/'.$project->id)
             ->assertOk()
@@ -205,5 +229,82 @@ class ProjectTest extends TestCase
 
         $this->delete('/subtarefas/'.$subtask->id)->assertSessionHasErrors('subtask');
         $this->assertModelExists($subtask);
+    }
+
+    public function test_lider_importa_projeto_e_tarefas_do_csv(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $arquivo = new UploadedFile(
+            base_path('tests/fixtures/lista-os630.csv'),
+            'lista.csv',
+            'text/csv',
+            null,
+            true,
+        );
+
+        $this->get('/projetos')->assertOk()->assertSee('Importar')->assertSee('Arraste o arquivo .CSV aqui');
+
+        $this->post('/projetos/importar', ['arquivo' => $arquivo])
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Projeto importado com 53 tarefas.');
+
+        $project = Project::query()->where('name', 'OS 630 Molde Tampa Stihl 4244')->first();
+        $this->assertNotNull($project);
+        $this->assertSame(0, $project->budget_cents);
+        $this->assertSame(0, $project->planned_minutes);
+        $this->assertSame($leader->id, $project->created_by);
+        $this->assertSame(53, $project->subtasks()->count());
+        $this->assertDatabaseHas('subtasks', [
+            'project_id' => $project->id,
+            'name' => 'Pos_01_CAVIDADE_FIXA',
+            'kind' => 'internal',
+            'budget_cents' => null,
+            'planned_minutes' => null,
+        ]);
+        $this->assertDatabaseMissing('subtasks', [
+            'project_id' => $project->id,
+            'name' => 'Standard Number',
+        ]);
+        $this->assertDatabaseMissing('subtasks', [
+            'project_id' => $project->id,
+            'name' => '1629,0 X 1629,0 X 1680,0',
+        ]);
+    }
+
+    public function test_importacao_ignora_tarefa_repetida_e_recusa_arquivo_sem_nome(): void
+    {
+        $this->actingAsRole(Role::Leader);
+
+        $repetida = UploadedFile::fake()->createWithContent('lista.csv', implode("\n", [
+            ';;Molde repetido;;;;',
+            'No.;Qty.;Standard Number',
+            '1;1;Usinagem',
+            '2;1;usinagem',
+            '3;1;',
+            '4;1;Acabamento',
+        ]));
+
+        $this->post('/projetos/importar', ['arquivo' => $repetida])->assertRedirect();
+
+        $project = Project::query()->where('name', 'Molde repetido')->first();
+        $this->assertSame(
+            ['Acabamento', 'Usinagem'],
+            $project->subtasks()->orderBy('name')->pluck('name')->all(),
+        );
+
+        $semNome = UploadedFile::fake()->createWithContent('vazio.csv', ";;;;;;\nNo.;Qty.;Standard Number\n1;1;Usinagem\n");
+        $this->from('/projetos')->post('/projetos/importar', ['arquivo' => $semNome, 'lightbox' => 'importar-projeto'])
+            ->assertRedirect('/projetos')
+            ->assertSessionHasErrors(['arquivo' => 'A primeira linha não tem o nome do projeto.']);
+        $this->assertSame(1, Project::query()->count());
+    }
+
+    public function test_operador_nao_importa_projeto(): void
+    {
+        $this->actingAsRole(Role::Operator);
+        $arquivo = UploadedFile::fake()->createWithContent('lista.csv', ";;Molde;;;;\n\n1;1;Peca\n");
+
+        $this->post('/projetos/importar', ['arquivo' => $arquivo])->assertForbidden();
+        $this->assertSame(0, Project::query()->count());
     }
 }

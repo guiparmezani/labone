@@ -23,7 +23,7 @@ class UpdateProjectRequest extends StoreProjectRequest
             : ($project instanceof Project ? $project->planned_minutes : null);
 
         $this->merge([
-            'budget_cents' => Formato::centavos($this->input('budget')),
+            'budget_cents' => $this->orcamentoEmCentavos(),
             'planned_minutes' => $planned,
         ]);
     }

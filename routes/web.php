@@ -22,6 +22,7 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::get('/projetos', [ProjectController::class, 'index'])->name('projetos.index');
     Route::get('/projetos/novo', [ProjectController::class, 'create'])->name('projetos.create');
     Route::post('/projetos', [ProjectController::class, 'store'])->name('projetos.store');
+    Route::post('/projetos/importar', [ProjectController::class, 'import'])->name('projetos.importar');
     Route::get('/projetos/{project}', [ProjectController::class, 'show'])->name('projetos.show');
     Route::get('/projetos/{project}/editar', [ProjectController::class, 'edit'])->name('projetos.edit');
     Route::put('/projetos/{project}', [ProjectController::class, 'update'])->name('projetos.update');

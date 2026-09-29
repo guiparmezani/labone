@@ -67,6 +67,10 @@ class UserManagementTest extends TestCase
             ->assertDontSee(route('usuarios.edit', $admin), false);
 
         $this->get('/usuarios/create')->assertOk()->assertDontSee('Administrador');
+        $this->get('/usuarios')
+            ->assertOk()
+            ->assertSee('id="novo-usuario"', false)
+            ->assertDontSee('value="admin"', false);
 
         $this->post('/usuarios', [
             'name' => 'Novo Admin',

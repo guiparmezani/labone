@@ -13,6 +13,7 @@
         <div class="menu">
             <button class="btn btn-ghost menu-button" type="button" data-menu aria-expanded="false" aria-haspopup="menu" aria-label="Ações do projeto">...</button>
             <div class="menu-panel" data-menu-painel hidden>
+                <a href="{{ route('projetos.edit', $project) }}">Editar</a>
                 @if ($project->isOpen())
                     <a href="{{ route('projetos.ponto', $project) }}">Ponto</a>
                 @endif

@@ -132,7 +132,7 @@ erDiagram
 | `name` | Required, 2–160 characters |
 | `notes` | Optional, max 2000 characters |
 | `status` | `open` or `closed`. Default `open` |
-| `budget_cents` | Required, integer, ≥ 0. This is the project budget. It is not a sum of anything else. |
+| `budget_cents` | Optional on the form. A blank value is stored as 0. Integer, ≥ 0. This is the project budget. It is not a sum of anything else. |
 | `planned_minutes` | Required, integer, ≥ 0. Planned hours stored on the project itself. Displayed planned hours are this number plus the sum of every subtask's `planned_minutes`. Subtask hours add; they do not subtract from a pool. |
 | `closed_at` | Set when status becomes `closed`. Cleared on reopen. |
 | `created_by` | User id |
@@ -282,6 +282,10 @@ Admin and leader see two columns. The left column is **Projetos em andamento**, 
 
 Admin and leader. List with a status filter, default **Abertos**. Columns: name, status, budget, planned hours, logged hours, third-party budget sum.
 
+**Novo projeto** and **Importar** open lightboxes on this page. A validation error reopens that same lightbox.
+
+**Importar** opens a lightbox. The file is a semicolon-separated CSV. Column three of the first row is the project name. From the third row on, column three is an internal task name. Other cells are ignored. The project is created open, with budget and planned hours at zero. Duplicate task names in the file are kept once.
+
 Create and edit form:
 
 - Nome
@@ -296,7 +300,7 @@ Operators have no project list route. They reach open projects from Início.
 
 ### Projeto
 
-Admin and leader see the project header with planned hours as the project field plus the tasks, then two groups of tasks. The project name opens the edit form. One **...** button opens Ponto, Relatório, Copiar, Encerrar or Reabrir, and Apagar. **Ponto** on an open project opens the same start screen the operator uses. **Relatório** opens the project sheet.
+Admin and leader see the project header with planned hours as the project field plus the tasks, then two groups of tasks. The project name opens the edit form. One **...** button opens Editar, Ponto, Relatório, Copiar, Encerrar or Reabrir, and Apagar. **Editar** is the same form: name, notes, budget, and planned hours. A leader sets planned hours when creating the project. After that, only an administrator can change them, including a project that arrived from CSV with zero hours. **Ponto** on an open project opens the same start screen the operator uses. **Relatório** opens the project sheet.
 
 Internal tasks: name, tempo previsto, tempo realizado, valor previsto, valor realizado, and the alarm. Clicking the row opens a lightbox on this page. Delete stays on the row when the task has no logs, and is hidden when logs exist.
 
@@ -344,7 +348,7 @@ Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows pl
 
 ### Usuários
 
-Admin and leader. Name, optional email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. Clicking a row opens that person’s edit form in a lightbox on this page when the signed-in user is allowed to change them. A validation error reopens that same lightbox. Only an admin can create an administrator or open an administrator’s edit form. **Novo usuário** stays on its own page.
+Admin and leader. Name, optional email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. **Novo usuário** opens a lightbox on this page. Clicking a row opens that person’s edit form in a lightbox when the signed-in user is allowed to change them. A validation error reopens that same lightbox. Only an admin can create an administrator or open an administrator’s edit form.
 
 ## 9. Validation copy
 

@@ -15,7 +15,7 @@ class StoreProjectRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'budget_cents' => Formato::centavos($this->input('budget')),
+            'budget_cents' => $this->orcamentoEmCentavos(),
             'planned_minutes' => Formato::minutosDeHoras($this->input('planned_hours')),
         ]);
     }
@@ -28,7 +28,7 @@ class StoreProjectRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:2', 'max:160'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'budget' => ['required', 'string'],
+            'budget' => ['nullable', 'string'],
             'budget_cents' => ['required', 'integer', 'min:0'],
             'planned_hours' => ['required', 'string'],
             'planned_minutes' => ['required', 'integer', 'min:0'],
@@ -45,7 +45,6 @@ class StoreProjectRequest extends FormRequest
             'name.min' => 'O nome precisa ter pelo menos 2 caracteres.',
             'name.max' => 'O nome pode ter no máximo 160 caracteres.',
             'notes.max' => 'As observações podem ter no máximo 2000 caracteres.',
-            'budget.required' => 'Informe o orçamento em reais.',
             'budget_cents.required' => 'Informe o orçamento em reais.',
             'budget_cents.integer' => 'Informe o orçamento em reais.',
             'budget_cents.min' => 'O orçamento não pode ser negativo.',
@@ -53,5 +52,16 @@ class StoreProjectRequest extends FormRequest
             'planned_minutes.required' => 'Informe as horas previstas.',
             'planned_minutes.min' => 'As horas previstas não podem ser negativas.',
         ];
+    }
+
+    protected function orcamentoEmCentavos(): ?int
+    {
+        $valor = $this->input('budget');
+
+        if ($valor === null || (is_string($valor) && trim($valor) === '')) {
+            return 0;
+        }
+
+        return Formato::centavos(is_string($valor) ? $valor : null);
     }
 }
