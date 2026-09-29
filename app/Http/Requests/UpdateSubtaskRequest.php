@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\SubtaskKind;
 use App\Models\Subtask;
 use App\Support\Formato;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,6 +21,10 @@ class UpdateSubtaskRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $this->merge([
+            'name' => trim((string) $this->input('name')),
+        ]);
+
         $subtask = $this->route('subtask');
         $admin = $this->user()?->isAdmin() ?? false;
         $kind = (string) $this->input('kind');
@@ -43,7 +48,7 @@ class UpdateSubtaskRequest extends FormRequest
             'alert_enabled' => $alert !== '',
             'alert_percentage' => $alert === '' ? null : $alert,
             'is_revision' => $revision,
-            'revision_notes' => $revision ? ($this->input('revision_notes') ?: null) : null,
+            'revision_notes' => trim((string) $this->input('revision_notes')) ?: null,
             'revision_of_subtask_id' => $revision ? ($this->input('revision_of_subtask_id') ?: null) : null,
         ]);
     }
@@ -54,7 +59,7 @@ class UpdateSubtaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'min:2', 'max:160'],
+            'name' => ['required', 'string', 'min:2', 'max:160', $this->uniqueName()],
             'kind' => ['required', Rule::enum(SubtaskKind::class)],
             'budget_cents' => [
                 Rule::requiredIf(fn () => $this->user()?->isAdmin() && $this->input('kind') === SubtaskKind::ThirdParty->value),
@@ -89,22 +94,35 @@ class UpdateSubtaskRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Informe o nome da subtarefa.',
+            'name.required' => 'Informe o nome da tarefa.',
             'name.min' => 'O nome precisa ter pelo menos 2 caracteres.',
-            'kind.required' => 'Escolha o tipo da subtarefa.',
+            'kind.required' => 'Escolha o tipo da tarefa.',
             'budget_cents.required' => 'Informe o valor previsto.',
             'budget_cents.integer' => 'Informe o valor previsto em reais.',
             'budget_cents.min' => 'O valor previsto não pode ser negativo.',
-            'planned_minutes.integer' => 'Informe o tempo previsto no formato hh:mm.',
+            'planned_minutes.integer' => 'Informe o tempo previsto com um número.',
             'planned_minutes.min' => 'O tempo previsto não pode ser negativo.',
             'realized_cents.integer' => 'Informe o valor realizado em reais.',
             'realized_cents.min' => 'O valor realizado não pode ser negativo.',
             'alert_percentage.integer' => 'A porcentagem precisa ser um número de 1 a 100.',
             'alert_percentage.min' => 'A porcentagem precisa ser um número de 1 a 100.',
             'alert_percentage.max' => 'A porcentagem precisa ser um número de 1 a 100.',
-            'revision_notes.max' => 'A descrição da revisão pode ter no máximo 2000 caracteres.',
+            'revision_notes.max' => 'A descrição pode ter no máximo 2000 caracteres.',
             'revision_of_subtask_id.exists' => 'A revisão precisa apontar para uma equipe terceira deste projeto.',
         ];
+    }
+
+    private function uniqueName(): Closure
+    {
+        $subtask = $this->route('subtask');
+        $projectId = $subtask instanceof Subtask ? $subtask->project_id : 0;
+        $ignoreId = $subtask instanceof Subtask ? $subtask->id : null;
+
+        return function (string $attribute, mixed $value, Closure $fail) use ($projectId, $ignoreId): void {
+            if (Subtask::nameTaken($projectId, (string) $value, $ignoreId)) {
+                $fail('Já existe uma tarefa com este nome neste projeto.');
+            }
+        };
     }
 
     /**
@@ -129,6 +147,6 @@ class UpdateSubtaskRequest extends FormRequest
             return null;
         }
 
-        return Formato::minutosDeDuracao($raw) ?? 'invalid';
+        return Formato::minutosDeHoras($raw) ?? 'invalid';
     }
 }

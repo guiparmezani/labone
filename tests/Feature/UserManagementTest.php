@@ -62,6 +62,8 @@ class UserManagementTest extends TestCase
         $this->get('/usuarios')
             ->assertOk()
             ->assertSee('Admin Protegido')
+            ->assertSee('data-abrir="editar-usuario-'.$operator->id.'"', false)
+            ->assertDontSee(route('usuarios.edit', $operator), false)
             ->assertDontSee(route('usuarios.edit', $admin), false);
 
         $this->get('/usuarios/create')->assertOk()->assertDontSee('Administrador');
@@ -124,10 +126,18 @@ class UserManagementTest extends TestCase
         $this->post('/usuarios', [
             'name' => 'Carlos Operador',
             'email' => 'carlos@oficina.test',
-            'password' => 'curta',
+            'password' => 'abc',
             'role' => 'operator',
             'active' => '1',
-        ])->assertInvalid(['password' => 'A senha precisa ter pelo menos 8 caracteres.']);
+        ])->assertInvalid(['password' => 'A senha precisa ter pelo menos 4 caracteres.']);
+
+        $this->post('/usuarios', [
+            'name' => 'Carlos Operador',
+            'email' => 'carlos@oficina.test',
+            'password' => 'abcd',
+            'role' => 'operator',
+            'active' => '1',
+        ])->assertRedirect('/usuarios');
     }
 
     public function test_admin_atualiza_sem_trocar_a_senha(): void
@@ -148,6 +158,53 @@ class UserManagementTest extends TestCase
         $this->assertSame(Role::Leader, $operator->role);
         $this->assertTrue(password_verify('senha-antiga', $operator->password));
         $this->assertTrue($admin->isAdmin());
+    }
+
+    public function test_email_e_opcional_e_o_nome_e_unico(): void
+    {
+        $this->actingAsRole(Role::Admin);
+
+        $this->post('/usuarios', [
+            'name' => 'Sem E-mail',
+            'email' => '',
+            'password' => 'abcd',
+            'role' => 'operator',
+            'active' => '1',
+        ])->assertRedirect('/usuarios');
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Sem E-mail',
+            'email' => null,
+        ]);
+
+        $this->post('/usuarios', [
+            'name' => 'sem e-mail',
+            'email' => '',
+            'password' => 'abcd',
+            'role' => 'operator',
+            'active' => '1',
+        ])->assertInvalid(['name' => 'Já existe um usuário com este nome.']);
+    }
+
+    public function test_erro_de_edicao_reabre_o_popup_daquela_pessoa(): void
+    {
+        $this->actingAsRole(Role::Admin);
+        $operator = User::factory()->operator()->create(['name' => 'Editavel']);
+        $outro = User::factory()->operator()->create(['name' => 'Outra Pessoa']);
+
+        $pagina = $this->followingRedirects()->from('/usuarios')->put('/usuarios/'.$operator->id, [
+            'name' => '',
+            'email' => '',
+            'password' => '',
+            'role' => 'operator',
+            'active' => '1',
+            'lightbox' => 'editar-usuario-'.$operator->id,
+        ]);
+
+        $pagina->assertSee('Informe o nome.');
+        $this->assertSame(1, substr_count($pagina->getContent(), 'Informe o nome.'));
+        $pagina->assertSee('value="'.$outro->name.'"', false);
+        $pagina->assertSee('document.getElementById("editar-usuario-'.$operator->id.'")?.showModal();', false);
     }
 
     public function test_nao_remove_o_unico_administrador_ativo(): void

@@ -7,6 +7,7 @@ use App\Enums\SubtaskKind;
 use App\Models\Project;
 use App\Models\Subtask;
 use App\Models\TimeLog;
+use App\Models\User;
 use App\Services\TimeClock;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -44,7 +45,8 @@ class HomeController extends Controller
                 ->get(),
             'openLogs' => $openLogs,
             'myOpenLogs' => $openLogs->where('user_id', $user->id)->values(),
-            'switchSubtasks' => Subtask::query()
+            'people' => User::query()->where('active', true)->orderBy('name')->get(['id', 'name']),
+            'clockSubtasks' => Subtask::query()
                 ->where('kind', SubtaskKind::Internal)
                 ->whereHas('project', fn ($query) => $query->where('status', ProjectStatus::Open))
                 ->with('project')

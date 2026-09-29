@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Models\Project;
 use App\Models\User;
@@ -17,10 +18,26 @@ class ReportController extends Controller
     {
         $this->authorizeManager($request);
         $report = PeriodReport::allTime();
+        $filters = $this->projectFilters($request);
 
         return view('reports.index', [
-            'projects' => $report->projects(),
+            'projects' => $report->projects(null, $filters['q'], $filters['status']),
             'operators' => $report->operators(),
+            'filters' => $filters,
+        ]);
+    }
+
+    public function person(Request $request, User $user): View
+    {
+        $this->authorizeManager($request);
+        $report = PeriodReport::fromRequest($request);
+
+        return view('reports.person', [
+            'user' => $user,
+            'sheet' => $report->personSheet($user->id),
+            'period' => $report->periodLabel(),
+            'from' => $request->string('from')->toString(),
+            'to' => $request->string('to')->toString(),
         ]);
     }
 
@@ -28,6 +45,7 @@ class ReportController extends Controller
     {
         $this->authorizeManager($request);
         $report = PeriodReport::fromRequest($request);
+        $filters = $this->projectFilters($request);
         $projectId = $request->integer('project_id') ?: null;
         $filename = 'projetos.csv';
 
@@ -39,10 +57,10 @@ class ReportController extends Controller
             }
         }
 
-        return $this->download($filename, function ($out) use ($report, $projectId) {
+        return $this->download($filename, function ($out) use ($report, $projectId, $filters) {
             fputcsv($out, ['Projeto', 'Situação', 'Orçamento', 'Horas previstas', 'Horas lançadas', 'Orçamento de terceiros'], ';');
 
-            foreach ($report->projects($projectId) as $project) {
+            foreach ($report->projects($projectId, $filters['q'], $filters['status']) as $project) {
                 fputcsv($out, [
                     $project->name,
                     $project->status->label(),
@@ -71,18 +89,23 @@ class ReportController extends Controller
         }
 
         return $this->download($filename, function ($out) use ($report, $userId) {
-            fputcsv($out, ['Nome', 'Papel', 'Horas', 'Por projeto'], ';');
+            $operators = $report->operators($userId);
+            $projects = $operators
+                ->flatMap(fn ($operator) => $operator->projects)
+                ->unique('id')
+                ->sortBy([['name', 'asc'], ['id', 'asc']])
+                ->values();
 
-            foreach ($report->operators($userId) as $operator) {
-                $porProjeto = $operator->projects
-                    ->map(fn ($line) => $line->name.' '.Formato::horasCsv($line->minutes))
-                    ->implode(', ');
+            fputcsv($out, ['Nome', 'Papel', 'Horas', ...$projects->pluck('name')->all()], ';');
+
+            foreach ($operators as $operator) {
+                $hours = $operator->projects->mapWithKeys(fn ($line) => [$line->id => $line->minutes]);
 
                 fputcsv($out, [
                     $operator->name,
                     Role::from($operator->role)->label(),
                     Formato::horasCsv($operator->minutes),
-                    $porProjeto,
+                    ...$projects->map(fn ($project) => Formato::horasCsv((int) ($hours[$project->id] ?? 0)))->all(),
                 ], ';');
             }
         });
@@ -98,6 +121,19 @@ class ReportController extends Controller
         }
 
         return $clean.'.csv';
+    }
+
+    /**
+     * @return array{q: string, status: string}
+     */
+    private function projectFilters(Request $request): array
+    {
+        $status = $request->string('status')->toString();
+
+        return [
+            'q' => trim($request->string('q')->toString()),
+            'status' => in_array($status, [ProjectStatus::Open->value, ProjectStatus::Closed->value], true) ? $status : '',
+        ];
     }
 
     private function authorizeManager(Request $request): void

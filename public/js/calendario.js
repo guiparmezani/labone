@@ -301,7 +301,7 @@
     document.addEventListener('submit', function (evento) {
         var invalido = false;
 
-        document.querySelectorAll('.calendario').forEach(function (caixa) {
+        evento.target.querySelectorAll('.calendario').forEach(function (caixa) {
             var modo = caixa.getAttribute('data-modo') === 'datetime' ? 'datetime' : 'date';
             var texto = caixa.querySelector('.calendario-texto');
             var oculto = caixa.querySelector('input[type="hidden"]');

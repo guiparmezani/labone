@@ -16,8 +16,9 @@ use Illuminate\Validation\ValidationException;
  */
 class TimeClock
 {
-    public function start(User $user, Subtask $subtask): TimeLog
+    public function start(User $user, Subtask $subtask, ?User $editor = null): TimeLog
     {
+        $editor ??= $user;
         $subtask->loadMissing('project');
 
         if (! $subtask->isInternal() || ! $subtask->project->isOpen()) {
@@ -34,7 +35,7 @@ class TimeClock
 
         if ($already) {
             throw ValidationException::withMessages([
-                'subtask_id' => 'Esta subtarefa já está em andamento.',
+                'subtask_id' => 'Esta tarefa já está em andamento.',
             ]);
         }
 
@@ -44,20 +45,14 @@ class TimeClock
             'started_at' => now(),
             'ended_at' => null,
             'source' => TimeLogSource::Timer,
-            'created_by' => $user->id,
-            'updated_by' => $user->id,
+            'created_by' => $editor->id,
+            'updated_by' => $editor->id,
         ]);
     }
 
-    public function stop(User $user, ?int $logId = null): TimeLog
+    public function stop(User $actor, ?int $logId = null): TimeLog
     {
-        $query = TimeLog::query()
-            ->where('user_id', $user->id)
-            ->whereNull('ended_at');
-
-        $log = $logId === null
-            ? $query->first()
-            : $query->whereKey($logId)->first();
+        $log = $this->openLogFor($actor, $logId);
 
         if (! $log) {
             throw ValidationException::withMessages([
@@ -65,57 +60,7 @@ class TimeClock
             ]);
         }
 
-        return $this->finish($log, $user);
-    }
-
-    /**
-     * O tempo já corrido fica na subtarefa antiga. A nova começa agora.
-     */
-    public function switchActivity(User $editor, TimeLog $log, Subtask $next): TimeLog
-    {
-        if (! $log->isOpen()) {
-            throw ValidationException::withMessages([
-                'subtask_id' => 'Este ponto já foi encerrado.',
-            ]);
-        }
-
-        $next->loadMissing('project');
-
-        if (! $next->isInternal() || ! $next->project->isOpen()) {
-            throw ValidationException::withMessages([
-                'subtask_id' => 'Este item não aceita ponto.',
-            ]);
-        }
-
-        if ($next->id === $log->subtask_id) {
-            throw ValidationException::withMessages([
-                'subtask_id' => 'Esta já é a atividade em andamento.',
-            ]);
-        }
-
-        $already = TimeLog::query()
-            ->where('user_id', $log->user_id)
-            ->where('subtask_id', $next->id)
-            ->whereNull('ended_at')
-            ->exists();
-
-        if ($already) {
-            throw ValidationException::withMessages([
-                'subtask_id' => 'Esta pessoa já está nesta subtarefa.',
-            ]);
-        }
-
-        $this->finish($log, $editor);
-
-        return TimeLog::query()->create([
-            'user_id' => $log->user_id,
-            'subtask_id' => $next->id,
-            'started_at' => now(),
-            'ended_at' => null,
-            'source' => TimeLogSource::Timer,
-            'created_by' => $editor->id,
-            'updated_by' => $editor->id,
-        ]);
+        return $this->finish($log, $actor);
     }
 
     public function closeOpen(User $subject, User $editor): void
@@ -138,6 +83,28 @@ class TimeClock
             ->whereNull('ended_at')
             ->orderBy('started_at')
             ->get();
+    }
+
+    private function openLogFor(User $actor, ?int $logId): ?TimeLog
+    {
+        if ($logId === null) {
+            return TimeLog::query()
+                ->where('user_id', $actor->id)
+                ->whereNull('ended_at')
+                ->first();
+        }
+
+        $log = TimeLog::query()->whereKey($logId)->whereNull('ended_at')->first();
+
+        if ($log === null) {
+            return null;
+        }
+
+        if ($log->user_id !== $actor->id && ! $actor->managesProjects()) {
+            return null;
+        }
+
+        return $log;
     }
 
     private function finish(TimeLog $log, User $editor): TimeLog

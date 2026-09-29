@@ -6,7 +6,7 @@
 
 @section('content')
     <section class="panel">
-        <h1>Editar subtarefa</h1>
+        <h1>Editar tarefa</h1>
         <p class="muted">Tempo realizado: {{ Formato::minutos($subtask->loggedMinutes()) }} já parados, {{ Formato::minutos($subtask->consumedMinutes()) }} com o ponto aberto. O valor realizado é digitado, não calculado.</p>
         <form method="POST" action="{{ route('subtarefas.update', $subtask) }}" class="stack">
             @csrf
@@ -28,7 +28,7 @@
             @if (auth()->user()->isAdmin())
                 <label class="field">
                     <span>Tempo previsto</span>
-                    <input type="text" name="planned_hours" inputmode="numeric" value="{{ old('planned_hours', $subtask->planned_minutes !== null ? Formato::duracaoEntrada($subtask->planned_minutes) : '') }}" placeholder="hh:mm">
+                    <input type="text" name="planned_hours" inputmode="decimal" value="{{ old('planned_hours', $subtask->planned_minutes !== null ? Formato::horasEntrada($subtask->planned_minutes) : '') }}" placeholder="1,5">
                     @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
                 </label>
             @else
@@ -53,16 +53,16 @@
                 <input type="number" name="alert_percentage" min="1" max="100" step="1" value="{{ old('alert_percentage', $subtask->alert_enabled ? $subtask->alert_percentage : '') }}">
                 @error('alert_percentage')<small class="error">{{ $message }}</small>@enderror
             </label>
+            <label class="field">
+                <span>Descrição</span>
+                <textarea name="revision_notes" maxlength="2000">{{ old('revision_notes', $subtask->revision_notes) }}</textarea>
+                @error('revision_notes')<small class="error">{{ $message }}</small>@enderror
+            </label>
             <label class="check">
                 <input class="revision-toggle" type="checkbox" name="is_revision" value="1" @checked(session()->hasOldInput() ? (bool) old('is_revision') : $subtask->is_revision)>
                 <span>Revisão</span>
             </label>
             <div class="revision-fields">
-                <label class="field">
-                    <span>Descrição da revisão</span>
-                    <textarea name="revision_notes" maxlength="2000">{{ old('revision_notes', $subtask->revision_notes) }}</textarea>
-                    @error('revision_notes')<small class="error">{{ $message }}</small>@enderror
-                </label>
                 <label class="field">
                     <span>Equipe terceira relacionada</span>
                     <select name="revision_of_subtask_id">

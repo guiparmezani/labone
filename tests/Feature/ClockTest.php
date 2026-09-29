@@ -44,6 +44,25 @@ class ClockTest extends TestCase
             ->assertDontSee('987654');
     }
 
+    public function test_ponto_marca_subtarefa_de_revisao(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $project = Project::factory()->create(['name' => 'Molde visível']);
+        Subtask::factory()->create([
+            'project_id' => $project->id,
+            'name' => 'Polimento',
+            'is_revision' => true,
+        ]);
+
+        $this->get('/projetos/'.$project->id.'/ponto')
+            ->assertOk()
+            ->assertSee('Polimento (revisão)');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Molde visível — Polimento (revisão)');
+    }
+
     public function test_segundo_inicio_em_outra_subtarefa_fica_aberto_e_a_mesma_recusa(): void
     {
         $operator = $this->actingAsRole(Role::Operator);

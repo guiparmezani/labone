@@ -35,7 +35,7 @@ class TimeLogController extends Controller
         return view('time_logs.index', [
             'logs' => $logs,
             'projects' => Project::query()->orderBy('name')->get(),
-            'users' => User::query()->orderBy('name')->get(),
+            ...$this->formData(),
             'filters' => [
                 'project_id' => $request->integer('project_id') ?: '',
                 'user_id' => $request->integer('user_id') ?: '',
@@ -117,16 +117,16 @@ class TimeLogController extends Controller
             'duration' => ['required', 'string'],
         ], [
             'user_id.required' => 'Escolha a pessoa.',
-            'subtask_id.required' => 'Escolha a subtarefa.',
+            'subtask_id.required' => 'Escolha a tarefa.',
             'started_at.required' => 'Informe o início.',
             'duration.required' => 'Informe a duração.',
         ]);
 
-        $minutes = Formato::minutosDeDuracao($data['duration']);
+        $minutes = Formato::minutosDeHoras($data['duration']);
 
         if ($minutes === null) {
             throw ValidationException::withMessages([
-                'duration' => 'Informe a duração no formato hh:mm.',
+                'duration' => 'Informe a duração em horas, como 1,5.',
             ]);
         }
 

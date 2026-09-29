@@ -16,32 +16,34 @@ class LoginController extends Controller
 {
     public function create(): View
     {
-        return view('auth.login');
+        return view('auth.login', [
+            'users' => User::query()->where('active', true)->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate(
             [
-                'email' => ['required', 'email'],
+                'user_id' => ['required', 'integer', 'exists:users,id'],
                 'password' => ['required', 'string'],
             ],
             [
-                'email.required' => 'Informe o e-mail.',
-                'email.email' => 'Informe um e-mail válido.',
+                'user_id.required' => 'Escolha seu nome.',
+                'user_id.exists' => 'Escolha seu nome.',
                 'password.required' => 'Informe a senha.',
             ],
         );
 
-        $key = mb_strtolower($credentials['email']);
+        $key = 'login:'.$credentials['user_id'];
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             throw ValidationException::withMessages([
-                'email' => 'Muitas tentativas. Espere um minuto e tente de novo.',
+                'user_id' => 'Muitas tentativas. Espere um minuto e tente de novo.',
             ])->status(429);
         }
 
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $user = User::query()->find($credentials['user_id']);
         $passwordOk = $user && Hash::check($credentials['password'], $user->password);
 
         // Conta inativa recebe a mesma resposta de senha errada.
@@ -49,7 +51,7 @@ class LoginController extends Controller
             RateLimiter::hit($key, 60);
 
             throw ValidationException::withMessages([
-                'email' => 'E-mail ou senha inválidos.',
+                'user_id' => 'Não foi possível entrar.',
             ]);
         }
 

@@ -114,14 +114,14 @@ class ProjectTest extends TestCase
 
         $this->get('/projetos/'.$project->id)
             ->assertOk()
-            ->assertSee('placeholder="hh:mm"', false)
+            ->assertSee('placeholder="1,5"', false)
             ->assertDontSee('Se preenchido, o alarme aparece', false);
 
         $this->post('/projetos/'.$project->id.'/subtarefas', [
             'name' => 'Usinagem externa',
             'kind' => 'third_party',
             'budget' => '800,00',
-            'planned_hours' => '01:30',
+            'planned_hours' => '1,5',
         ])->assertRedirect('/projetos/'.$project->id);
 
         $this->assertDatabaseHas('subtasks', [
@@ -140,6 +140,45 @@ class ProjectTest extends TestCase
 
         $this->post('/projetos/'.$project->id.'/subtarefas', [
             'name' => 'Outra',
+            'kind' => 'internal',
+        ])->assertSessionHasErrors('name');
+    }
+
+    public function test_nome_da_subtarefa_e_unico_no_projeto(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $project = Project::factory()->create(['created_by' => $leader->id]);
+        $other = Project::factory()->create(['created_by' => $leader->id]);
+        $existing = Subtask::factory()->create([
+            'project_id' => $project->id,
+            'name' => 'Usinagem',
+            'created_by' => $leader->id,
+        ]);
+
+        $this->post('/projetos/'.$project->id.'/subtarefas', [
+            'name' => ' usinagem ',
+            'kind' => 'internal',
+            'lightbox' => 'nova-interna',
+        ])->assertSessionHasErrors('name');
+
+        $this->post('/projetos/'.$other->id.'/subtarefas', [
+            'name' => 'Usinagem',
+            'kind' => 'internal',
+        ])->assertRedirect('/projetos/'.$other->id);
+
+        $this->put('/subtarefas/'.$existing->id, [
+            'name' => 'Usinagem',
+            'kind' => 'internal',
+        ])->assertRedirect('/projetos/'.$project->id);
+
+        $sibling = Subtask::factory()->create([
+            'project_id' => $project->id,
+            'name' => 'Acabamento',
+            'created_by' => $leader->id,
+        ]);
+
+        $this->put('/subtarefas/'.$sibling->id, [
+            'name' => 'Usinagem',
             'kind' => 'internal',
         ])->assertSessionHasErrors('name');
     }

@@ -22,7 +22,7 @@ class EnsureUserIsActive
             $request->session()->regenerateToken();
 
             return redirect()->route('entrar')->withErrors([
-                'email' => 'Sua conta está inativa.',
+                'user_id' => 'Sua conta está inativa.',
             ]);
         }
 

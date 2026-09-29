@@ -36,7 +36,7 @@ class ProjectAlertTest extends TestCase
         $this->put(route('subtarefas.update', $hit), [
             'name' => 'Usinagem',
             'kind' => 'internal',
-            'planned_hours' => '01:40',
+            'planned_hours' => '1,67',
             'budget' => '1.500,00',
             'realized' => '400,00',
             'alert_enabled' => '1',

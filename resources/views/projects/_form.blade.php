@@ -21,7 +21,7 @@
         @error('planned_hours')<small class="error">{{ $message }}</small>@enderror
         @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
     </label>
-    <p class="muted">Estas horas são do projeto. As horas previstas de cada subtarefa somam por cima.</p>
+    <p class="muted">Estas horas são do projeto. As horas previstas de cada tarefa somam por cima.</p>
 @else
-    <p>Horas previstas do projeto: {{ \App\Support\Formato::minutos($project->planned_minutes) }}. Só o administrador altera. As subtarefas somam por cima.</p>
+    <p>Horas previstas do projeto: {{ \App\Support\Formato::minutos($project->planned_minutes) }}. Só o administrador altera. As tarefas somam por cima.</p>
 @endif

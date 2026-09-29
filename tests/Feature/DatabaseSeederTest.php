@@ -19,8 +19,10 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(4, User::query()->count());
         $this->assertSame(1, TimeLog::query()->whereNull('ended_at')->count());
 
+        $joana = User::query()->where('email', 'joana@labone.test')->first();
+
         $this->post('/entrar', [
-            'email' => 'joana@labone.test',
+            'user_id' => $joana->id,
             'password' => 'senha-segura',
         ])->assertRedirect('/');
 

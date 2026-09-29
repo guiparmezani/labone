@@ -30,7 +30,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Subtarefa</th>
+                    <th>Tarefa</th>
                     <th>Tempo previsto</th>
                     <th>Tempo realizado</th>
                     <th>Valor previsto</th>
@@ -40,14 +40,19 @@
             <tbody>
                 @forelse ($internal as $subtask)
                     <tr>
-                        <td>{{ $subtask->name }}</td>
+                        <td>
+                            {{ $subtask->name }}
+                            @if ($subtask->revision_notes)
+                                <br><span class="muted">{{ $subtask->revision_notes }}</span>
+                            @endif
+                        </td>
                         <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                         <td>{{ Formato::minutos($subtask->consumedMinutes()) }}</td>
                         <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
                         <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5">Nenhuma subtarefa interna.</td></tr>
+                    <tr><td colspan="5">Nenhuma tarefa.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -56,7 +61,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Subtarefa</th>
+                    <th>Tarefa</th>
                     <th>Tempo previsto</th>
                     <th>Valor previsto</th>
                     <th>Valor realizado</th>
@@ -66,7 +71,12 @@
             <tbody>
                 @forelse ($thirdParty as $subtask)
                     <tr>
-                        <td>{{ $subtask->name }}</td>
+                        <td>
+                            {{ $subtask->name }}
+                            @if ($subtask->revision_notes)
+                                <br><span class="muted">{{ $subtask->revision_notes }}</span>
+                            @endif
+                        </td>
                         <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                         <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
                         <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
@@ -83,7 +93,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Subtarefa</th>
+                        <th>Tarefa</th>
                         <th>Equipe terceira</th>
                         <th>Tempo previsto</th>
                         <th>Tempo realizado</th>
@@ -115,7 +125,7 @@
             <div>
                 <p class="muted">Horas previstas</p>
                 <strong>{{ Formato::minutos($project->plannedMinutesTotal()) }}</strong>
-                <p class="muted">{{ Formato::minutos($project->planned_minutes) }} do projeto + {{ Formato::minutos($project->plannedMinutesFromSubtasks()) }} das subtarefas</p>
+                <p class="muted">{{ Formato::minutos($project->planned_minutes) }} do projeto + {{ Formato::minutos($project->plannedMinutesFromSubtasks()) }} das tarefas</p>
             </div>
             <div>
                 <p class="muted">Horas realizadas</p>
@@ -125,17 +135,18 @@
             <div>
                 <p class="muted">Valor previsto</p>
                 <strong>{{ Formato::reais($project->budget_cents + $previstoSubtarefas) }}</strong>
-                <p class="muted">{{ Formato::reais($project->budget_cents) }} do projeto + {{ Formato::reais($previstoSubtarefas) }} das subtarefas</p>
+                <p class="muted">{{ Formato::reais($project->budget_cents) }} do projeto + {{ Formato::reais($previstoSubtarefas) }} das tarefas</p>
             </div>
             <div>
                 <p class="muted">Valor realizado</p>
                 <strong>{{ Formato::reais($realizado) }}</strong>
-                <p class="muted">Soma do que foi digitado nas subtarefas</p>
+                <p class="muted">Soma do que foi digitado nas tarefas</p>
             </div>
         </div>
 
-        <div class="sheet-download no-print">
+        <div class="sheet-download no-print actions">
             <a class="btn btn-primary" href="{{ route('projetos.relatorio.csv', $project) }}">Exportar</a>
+            <button class="btn btn-ghost" type="button" onclick="window.print()">Imprimir</button>
         </div>
     </section>
 @endsection

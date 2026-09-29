@@ -11,7 +11,7 @@
     $nome = $enviado ? old('name') : ($subtask->name ?? '');
     $horas = $enviado
         ? old('planned_hours')
-        : ($subtask?->planned_minutes !== null ? Formato::duracaoEntrada($subtask->planned_minutes) : '');
+        : ($subtask?->planned_minutes !== null ? Formato::horasEntrada($subtask->planned_minutes) : '');
     $orcamento = $enviado
         ? old('budget')
         : ($subtask?->budget_cents !== null ? Formato::reaisEntrada($subtask->budget_cents) : '');
@@ -70,7 +70,7 @@
         @if ($podeHoras)
             <label class="field">
                 <span>Tempo previsto</span>
-                <input type="text" name="planned_hours" inputmode="numeric" value="{{ $horas }}" placeholder="hh:mm">
+                <input type="text" name="planned_hours" inputmode="decimal" value="{{ $horas }}" placeholder="1,5">
                 @if ($enviado)
                     @error('planned_minutes')<small class="error">{{ $message }}</small>@enderror
                 @endif
@@ -107,18 +107,19 @@
             @endif
         </label>
 
+        <label class="field">
+            <span>Descrição</span>
+            <textarea name="revision_notes" maxlength="2000">{{ $notas }}</textarea>
+            @if ($enviado)
+                @error('revision_notes')<small class="error">{{ $message }}</small>@enderror
+            @endif
+        </label>
+
         <label class="check">
             <input class="revision-toggle" type="checkbox" name="is_revision" value="1" @checked($revisao)>
             <span>Revisão</span>
         </label>
         <div class="revision-fields">
-            <label class="field">
-                <span>Descrição da revisão</span>
-                <textarea name="revision_notes" maxlength="2000">{{ $notas }}</textarea>
-                @if ($enviado)
-                    @error('revision_notes')<small class="error">{{ $message }}</small>@enderror
-                @endif
-            </label>
             <label class="field">
                 <span>Equipe terceira relacionada</span>
                 <select name="revision_of_subtask_id">

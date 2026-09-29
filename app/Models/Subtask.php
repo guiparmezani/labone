@@ -60,6 +60,25 @@ class Subtask extends Model
     }
 
     /**
+     * Nome como aparece ao escolher a subtarefa para um ponto.
+     */
+    public function clockLabel(): string
+    {
+        return $this->is_revision ? $this->name.' (revisão)' : $this->name;
+    }
+
+    public static function nameTaken(int $projectId, string $name, ?int $ignoreId = null): bool
+    {
+        $needle = mb_strtolower(trim($name));
+
+        return self::query()
+            ->where('project_id', $projectId)
+            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->pluck('name')
+            ->contains(fn (string $existing) => mb_strtolower(trim($existing)) === $needle);
+    }
+
+    /**
      * @param  Builder<Subtask>  $query
      * @return Builder<Subtask>
      */

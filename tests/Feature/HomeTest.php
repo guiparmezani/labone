@@ -72,7 +72,8 @@ class HomeTest extends TestCase
             ->assertSee('Joana Torno')
             ->assertSee('Iniciar ponto')
             ->assertSee('data-started-at')
-            ->assertDontSee('Parar');
+            ->assertSee('Parar')
+            ->assertDontSee('Trocar');
     }
 
     public function test_lider_inicia_pelo_mesmo_ponto_e_para_o_proprio_relogio(): void

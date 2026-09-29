@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Enums\SubtaskKind;
 use App\Models\Project;
 use App\Models\Subtask;
+use App\Models\User;
 use App\Services\TimeClock;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ClockController extends Controller
@@ -22,7 +24,7 @@ class ClockController extends Controller
             'subtasks' => $project->subtasks()
                 ->where('kind', SubtaskKind::Internal)
                 ->orderBy('name')
-                ->get(['id', 'project_id', 'name', 'kind']),
+                ->get(['id', 'project_id', 'name', 'kind', 'is_revision']),
             'openLogs' => $openLogs,
         ]);
     }
@@ -31,11 +33,26 @@ class ClockController extends Controller
     {
         $data = $request->validate([
             'subtask_id' => ['required', 'integer', 'exists:subtasks,id'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
         ], [
-            'subtask_id.required' => 'Escolha a subtarefa.',
+            'subtask_id.required' => 'Escolha a tarefa.',
+            'user_id.exists' => 'Escolha a pessoa.',
         ]);
 
-        $clock->start($request->user(), Subtask::query()->findOrFail($data['subtask_id']));
+        $actor = $request->user();
+        $subject = $actor;
+
+        if ($actor->managesProjects() && ! empty($data['user_id'])) {
+            $subject = User::query()->whereKey($data['user_id'])->where('active', true)->first();
+
+            if (! $subject) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'Escolha uma pessoa com conta ativa.',
+                ]);
+            }
+        }
+
+        $clock->start($subject, Subtask::query()->findOrFail($data['subtask_id']), $actor);
 
         return back()->with('status', 'Ponto iniciado.');
     }
@@ -49,20 +66,5 @@ class ClockController extends Controller
         $clock->stop($request->user(), $data['time_log_id'] ?? null);
 
         return back()->with('status', 'Ponto encerrado.');
-    }
-
-    public function switchActivity(Request $request, \App\Models\TimeLog $timeLog, TimeClock $clock): RedirectResponse
-    {
-        abort_unless($request->user()?->managesProjects(), 403);
-
-        $data = $request->validate([
-            'subtask_id' => ['required', 'integer', 'exists:subtasks,id'],
-        ], [
-            'subtask_id.required' => 'Escolha a nova atividade.',
-        ]);
-
-        $clock->switchActivity($request->user(), $timeLog, Subtask::query()->findOrFail($data['subtask_id']));
-
-        return back()->with('status', 'Atividade trocada. O tempo já corrido ficou na atividade anterior.');
     }
 }

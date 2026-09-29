@@ -19,6 +19,7 @@ class UserController extends Controller
 
         return view('users.index', [
             'users' => User::query()->orderBy('name')->get(),
+            'roles' => auth()->user()->assignableRoles(),
         ]);
     }
 

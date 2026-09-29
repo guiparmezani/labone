@@ -16,7 +16,7 @@ class SubtaskController extends Controller
     {
         if (! $project->isOpen()) {
             return back()->withErrors([
-                'name' => 'Projeto encerrado não recebe subtarefa.',
+                'name' => 'Projeto encerrado não recebe tarefa.',
             ])->withInput();
         }
 
@@ -46,7 +46,7 @@ class SubtaskController extends Controller
             ? route('projetos.ponto', $project)
             : route('projetos.show', $project);
 
-        return redirect($back)->with('status', 'Subtarefa criada.');
+        return redirect($back)->with('status', 'Tarefa criada.');
     }
 
     public function edit(Subtask $subtask): View
@@ -71,7 +71,7 @@ class SubtaskController extends Controller
 
         if ($hasLogs && $kind !== $subtask->kind) {
             return back()->withErrors([
-                'kind' => 'Esta subtarefa já tem lançamentos.',
+                'kind' => 'Esta tarefa já tem lançamentos.',
             ])->withInput();
         }
 
@@ -88,7 +88,7 @@ class SubtaskController extends Controller
             'revision_of_subtask_id' => $request->input('revision_of_subtask_id'),
         ]);
 
-        return redirect()->route('projetos.show', $subtask->project_id)->with('status', 'Subtarefa atualizada.');
+        return redirect()->route('projetos.show', $subtask->project_id)->with('status', 'Tarefa atualizada.');
     }
 
     public function destroy(Subtask $subtask): RedirectResponse
@@ -104,6 +104,6 @@ class SubtaskController extends Controller
         $projectId = $subtask->project_id;
         $subtask->delete();
 
-        return redirect()->route('projetos.show', $projectId)->with('status', 'Subtarefa apagada.');
+        return redirect()->route('projetos.show', $projectId)->with('status', 'Tarefa apagada.');
     }
 }

@@ -29,7 +29,7 @@ class MeetingTest extends TestCase
         $this->get(route('projetos.show', $project))
             ->assertOk()
             ->assertSee('1h 30min previstas')
-            ->assertSee('1h 00min do projeto + 0h 30min das subtarefas');
+            ->assertSee('1h 00min do projeto + 0h 30min das tarefas');
     }
 
     public function test_lider_nao_altera_horas_previstas_nem_orcamento_de_terceiros(): void
@@ -67,34 +67,32 @@ class MeetingTest extends TestCase
         $this->assertSame(90, $third->planned_minutes);
     }
 
-    public function test_troca_de_atividade_deixa_o_tempo_corrido_na_subtarefa_anterior(): void
+    public function test_lider_inicia_e_para_o_ponto_de_outra_pessoa(): void
     {
-        $this->actingAsRole(Role::Leader);
+        $leader = $this->actingAsRole(Role::Leader);
         $operator = User::factory()->operator()->create();
-        $project = Project::factory()->create();
-        $current = Subtask::factory()->create(['project_id' => $project->id, 'name' => 'Usinagem']);
-        $next = Subtask::factory()->create(['project_id' => $project->id, 'name' => 'Acabamento']);
-        $open = TimeLog::factory()->open()->create([
-            'user_id' => $operator->id,
-            'subtask_id' => $current->id,
-            'created_by' => $operator->id,
-            'updated_by' => $operator->id,
-            'started_at' => now()->subMinutes(25),
-        ]);
+        $subtask = Subtask::factory()->create();
 
-        $this->post(route('ponto.switch', $open), [
-            'subtask_id' => $next->id,
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Pessoa')
+            ->assertDontSee('Trocar');
+
+        $this->post('/ponto/iniciar', [
+            'user_id' => $operator->id,
+            'subtask_id' => $subtask->id,
         ])->assertRedirect();
+
+        $open = TimeLog::query()->whereNull('ended_at')->first();
+        $this->assertNotNull($open);
+        $this->assertSame($operator->id, $open->user_id);
+        $this->assertSame($leader->id, $open->created_by);
+
+        $this->post('/ponto/parar', ['time_log_id' => $open->id])->assertRedirect();
 
         $open->refresh();
         $this->assertNotNull($open->ended_at);
-        $this->assertSame($current->id, $open->subtask_id);
-        $this->assertGreaterThanOrEqual(24, $open->started_at->diffInMinutes($open->ended_at));
-
-        $fresh = TimeLog::query()->whereNull('ended_at')->first();
-        $this->assertNotNull($fresh);
-        $this->assertSame($operator->id, $fresh->user_id);
-        $this->assertSame($next->id, $fresh->subtask_id);
+        $this->assertSame($leader->id, $open->updated_by);
     }
 
     public function test_revisao_aponta_equipe_terceira_e_a_copia_reaponta(): void
@@ -165,8 +163,8 @@ class MeetingTest extends TestCase
         $html = $this->get(route('projetos.relatorio', $project))
             ->assertOk()
             ->assertSee('Exportar')
-            ->assertDontSee('Imprimir')
-            ->assertDontSee('window.print')
+            ->assertSee('Imprimir')
+            ->assertSee('window.print()', false)
             ->assertSee('Horas previstas')
             ->assertSee('1h 30min')
             ->assertSee('Inclui o ponto em andamento')
@@ -196,17 +194,50 @@ class MeetingTest extends TestCase
         $this->get(route('projetos.relatorio.csv', $project))->assertForbidden();
     }
 
-    public function test_operador_nao_troca_atividade(): void
+    public function test_operador_nao_para_nem_inicia_o_ponto_de_outra_pessoa(): void
     {
         $operator = $this->actingAsRole(Role::Operator);
+        $other = User::factory()->operator()->create();
         $open = TimeLog::factory()->open()->create([
-            'user_id' => $operator->id,
-            'created_by' => $operator->id,
-            'updated_by' => $operator->id,
+            'user_id' => $other->id,
+            'created_by' => $other->id,
+            'updated_by' => $other->id,
         ]);
+        $subtask = Subtask::factory()->create();
 
-        $this->post(route('ponto.switch', $open), [
-            'subtask_id' => Subtask::factory()->create()->id,
-        ])->assertForbidden();
+        $this->post('/ponto/parar', ['time_log_id' => $open->id])->assertSessionHasErrors('ponto');
+        $this->assertNull($open->fresh()->ended_at);
+
+        $this->post('/ponto/iniciar', [
+            'user_id' => $other->id,
+            'subtask_id' => $subtask->id,
+        ])->assertRedirect();
+
+        $started = TimeLog::query()->where('subtask_id', $subtask->id)->whereNull('ended_at')->first();
+        $this->assertSame($operator->id, $started->user_id);
+    }
+
+    public function test_descricao_fica_sem_a_revisao(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $project = Project::factory()->create(['created_by' => $leader->id]);
+
+        $this->post('/projetos/'.$project->id.'/subtarefas', [
+            'name' => 'Usinagem',
+            'kind' => 'internal',
+            'revision_notes' => 'Cavidade 2',
+        ])->assertRedirect();
+
+        $subtask = Subtask::query()->where('name', 'Usinagem')->first();
+        $this->assertFalse($subtask->is_revision);
+        $this->assertSame('Cavidade 2', $subtask->revision_notes);
+
+        $this->put('/subtarefas/'.$subtask->id, [
+            'name' => 'Usinagem',
+            'kind' => 'internal',
+            'revision_notes' => 'Cavidade 3',
+        ])->assertRedirect();
+
+        $this->assertSame('Cavidade 3', $subtask->fresh()->revision_notes);
     }
 }

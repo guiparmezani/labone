@@ -57,9 +57,9 @@ Hosting is the client's account. This spec includes putting the app on their ser
 
 ## 4. Access
 
-Session login with email and password. No public signup.
+Session login with a name chosen from the list of active users, plus a password. No public signup. Inactive users are left off the list and cannot log in.
 
-Admin creates every user and sets the password. Minimum password length is 8 characters. Email is unique. A user is `active` or not. An inactive user cannot log in.
+Admin creates every user and sets the password. Minimum password length is 4 characters. Name is required and unique, ignoring letter case, and it is how the person is picked at login. Email is optional. A filled email is still unique. A user is `active` or not.
 
 Deactivating a user who has an open timer stops that timer at the server's current time and records the admin as `updated_by`.
 
@@ -81,8 +81,8 @@ erDiagram
     subtasks ||--o{ time_logs : receives
     users {
         bigint id
-        string name
-        string email
+        string name UK
+        string email "nullable"
         string password
         enum role
         bool active
@@ -119,8 +119,8 @@ erDiagram
 
 | Column | Rules |
 |---|---|
-| `name` | Required, 2–120 characters |
-| `email` | Required, unique, used as login |
+| `name` | Required, 2–120 characters, unique. This is the login identity. |
+| `email` | Optional. Unique when filled. |
 | `password` | Hashed |
 | `role` | `admin`, `leader`, or `operator` |
 | `active` | Default true |
@@ -146,7 +146,7 @@ Delete a project only when it has no time logs. Otherwise the only exit is close
 | Column | Rules |
 |---|---|
 | `project_id` | Required. Project must be open to create. |
-| `name` | Required, 2–160 characters. Duplicates are allowed. |
+| `name` | Required, 2–160 characters. Unique inside the project, ignoring spaces at the ends and letter case. The same name on another project is fine. |
 | `kind` | `internal` or `third_party` |
 | `budget_cents` | Valor previsto, in cents. Required and ≥ 0 when `kind` is `third_party`. Optional for an internal subtask. |
 | `planned_minutes` | Tempo previsto for this subtask. Optional. Empty until someone fills it in. |
@@ -154,7 +154,7 @@ Delete a project only when it has no time logs. Otherwise the only exit is close
 | `alert_percentage` | Optional integer 1–100. |
 | `alert_enabled` | Set from the percentage field. A filled percentage turns the alarm on. A blank field turns it off and clears the percentage. |
 | `is_revision` | Checkbox. When on, the subtask is rework, usually Labone's own clocked time caused by a third party. |
-| `revision_notes` | Optional description. Kept only while `is_revision` is on. |
+| `revision_notes` | Optional description for any subtask. Stays when the revision box is off. Blank clears it. |
 | `revision_of_subtask_id` | Optional link to a third-party subtask on the same project, so revisions can be totaled per outside crew. Cleared when the box is off. |
 | `created_by` | User id |
 
@@ -202,7 +202,7 @@ Enforce these on the server for every route, not only in the navigation. A forbi
 | See reached alerts on the home screen | Yes | Yes | No |
 | Change project or subtask planned hours | Yes | No | No |
 | Change a third-party budget | Yes | No | No |
-| Switch someone's running activity | Yes | Yes | No |
+| Start or stop a timer for any active person | Yes | Yes | No |
 | Copy a project | Yes | Yes | No |
 | Create, edit, close, reopen projects | Yes | Yes | No |
 | Delete a project that has no logs | Yes | Yes | No |
@@ -224,24 +224,23 @@ Operator HTTP responses, including validation errors, must not echo a budget, a 
 
 Server time is the only clock that writes `started_at` for a timer. The browser clock is never stored.
 
-**Start.** `POST` with a subtask id.
+**Start.** `POST` with a subtask id. Admin and leader may also send a user id, and the clock opens for that active person. An operator's post always opens their own clock.
 
 - Caller is authenticated and active.
+- The person the clock is for is active.
 - Subtask is internal and its project is open.
-- The caller does not already have an open log on this same subtask.
+- That person does not already have an open log on this same subtask.
 - Insert `started_at = now()`, `ended_at = null`, `source = timer`.
 
 A second open log on a different subtask is allowed. If the subtask is third-party or the project is closed, refuse.
 
-**Stop.** Stops one open log of the caller, identified by id. Set `ended_at = now()`. If `ended_at` is not after `started_at`, move it one second past the start. If they have no matching open log, refuse.
-
-**Switch activity.** Admin and leader. The open log is finished now, so the elapsed time stays on the old subtask, and a new open log starts now for the same person on the chosen internal subtask of an open project. This is not an edit of the hours.
+**Stop.** Stops one open log, identified by id. Set `ended_at = now()`. If `ended_at` is not after `started_at`, move it one second past the start. An operator can stop only their own open log. Admin and leader can stop any open log. If they have no matching open log, refuse.
 
 Operators have no other time-log actions. They never send a start time or a duration.
 
 **Manual log.** Admin creates. Admin and leader edit and delete. Leaders can read the list.
 
-- Required: user, internal subtask, start, duration as `hh:mm`.
+- Required: user, internal subtask, start, duration as decimal hours (`1,5` and `1.5` both mean 90 minutes).
 - The project must be open.
 - Duration is greater than zero. The stored end is the start plus that duration.
 - That end is not in the future. Start may be in the past.
@@ -250,7 +249,7 @@ Operators have no other time-log actions. They never send a start time or a dura
 
 Edit uses the same checks. Delete is a hard delete. The pilot has no trash.
 
-Leaders and admin may also start and stop their own timer. Manual entry is how they fix an operator's day.
+Leaders and admin may start a timer for themselves or for any active person, and they may stop any open timer. Manual entry is how they fix an operator's day.
 
 ## 8. Screens
 
@@ -260,7 +259,7 @@ Phone layout is a single column below 768px. The operator's open timer, when the
 
 ### Entrar
 
-Email, password, submit. Generic error on failure: "E-mail ou senha inválidos."
+A select of active user names, password, submit. Wrong password, an unknown person, or an inactive account all answer "Não foi possível entrar."
 
 ### Início
 
@@ -275,8 +274,8 @@ Admin and leader see two columns. The left column is **Projetos em andamento**, 
 
 **Right — Pontos em andamento.**
 
-- Admin and leader see their own open logs above those regions, each with the same live clock and **Parar** an operator gets. **Iniciar ponto** on Início starts their own clock on an internal subtask of an open project. **Ponto** on the project page opens the same start screen.
-- Admin and leader see every open log: operator name, project, subtask, time of day it started, a live clock `HH:MM:SS` driven from `started_at`, and a **Trocar atividade** control. The server prints the current elapsed time, and a script advances the seconds. This region can be empty: "Nenhum ponto em andamento."
+- Admin and leader see their own open logs above those regions, each with the same live clock and **Parar** an operator gets. **Iniciar ponto** on Início asks for a person and an internal subtask of an open project, then starts that person's clock. The person list defaults to whoever is signed in. **Ponto** on the project page opens the same start screen an operator uses, and that one starts the signed-in person's clock. A revision subtask shows `(revisão)` after its name in those pickers.
+- Admin and leader see every open log: operator name, project, subtask, time of day it started, a live clock `HH:MM:SS` driven from `started_at`, and **Parar**. The server prints the current elapsed time, and a script advances the seconds. This region can be empty: "Nenhum ponto em andamento."
 - Operator sees each of their own open logs at the top of Início, stacked: project, subtask, the same live clock for that point, "Desde HH:MM", and **Parar**. Each clock is only that open point. It is not the total already spent on the task or the project. No history, no other people. The same clocks appear on the start screen. If they have nothing open: "Você não tem ponto em andamento."
 
 ### Projetos
@@ -297,31 +296,31 @@ Operators have no project list route. They reach open projects from Início.
 
 ### Projeto
 
-Admin and leader see the project header with planned hours as the project field plus the subtasks, then two groups of subtasks. One **...** button opens Ponto, Relatório, Editar, Copiar, Encerrar or Reabrir, and Apagar. **Ponto** on an open project opens the same start screen the operator uses. **Relatório** opens the project sheet.
+Admin and leader see the project header with planned hours as the project field plus the tasks, then two groups of tasks. The project name opens the edit form. One **...** button opens Ponto, Relatório, Copiar, Encerrar or Reabrir, and Apagar. **Ponto** on an open project opens the same start screen the operator uses. **Relatório** opens the project sheet.
 
-Internal subtasks: name, tempo previsto, tempo realizado, valor previsto, valor realizado, and the alarm. **Editar** opens a lightbox on this page. Delete stays on the row when the subtask has no logs, and is hidden when logs exist.
+Internal tasks: name, tempo previsto, tempo realizado, valor previsto, valor realizado, and the alarm. Clicking the row opens a lightbox on this page. Delete stays on the row when the task has no logs, and is hidden when logs exist.
 
 Third-party subtasks: the same columns except tempo realizado, because that row never gets a clock.
 
-On an open project, each group has one button under the table: **Adicionar subtarefa** or **Adicionar equipe terceira**. The button opens a lightbox with the same fields as editing: name, tempo previsto, valor previsto, valor realizado, alarm, and revision. A leader can set tempo previsto and the third-party valor previsto when creating. After that, only an admin can change those two. The separate edit page remains for a direct link.
+On an open project, each group has one button under the table: **Adicionar tarefa** or **Adicionar equipe terceira**. The button opens a lightbox with the same fields as editing: name, tempo previsto, valor previsto, valor realizado, alarm, and revision. A leader can set tempo previsto and the third-party valor previsto when creating. After that, only an admin can change those two. The separate edit page remains for a direct link.
 
 **Copiar** asks only for the new name.
 
-Operator project screen, reached from Início: project name as a heading, then internal subtasks, each with **Iniciar**, or **Parar** when that subtask is already running for them. Other open clocks stay visible above the list, each with its own **Parar**. Third-party rows are omitted. No hours, no money. At the bottom, a single field **Nova subtarefa** and a save button. Starting a second task does not require stopping the first.
+Operator project screen, reached from Início: project name as a heading, then internal tasks, each with **Iniciar**, or **Parar** when that task is already running for them. Other open clocks stay visible above the list, each with its own **Parar**. Third-party rows are omitted. No hours, no money. At the bottom, a single field **Nova tarefa** and a save button. Starting a second task does not require stopping the first.
 
 ### Lançamentos
 
 Admin and leader. Filter by project, user, and a date range on `started_at`. Default range is the current month in São Paulo.
 
-Columns: operator, project, subtask, start, duration as `Hh MMmin`. The end is not shown. It is the start plus the duration.
+Columns: operator, project, task, start, duration as `Hh MMmin`. The end is not shown. It is the start plus the duration.
 
-**Novo lançamento** is admin only. Admin and leader can edit an existing row: person, subtask, start, and duration as `hh:mm`. **Apagar** asks for a confirm and is available to admin and leader.
+**Novo lançamento** is admin only and stays on its own page. Admin and leader open an existing row in a lightbox on this page: person, task, start, and duration as decimal hours. A validation error reopens that same lightbox. **Apagar** stays on the row, asks for a confirm, and is available to admin and leader.
 
 Open logs appear in this list with duration shown as "Em andamento".
 
 ### Relatórios
 
-Admin and leader. One page, two blocks, all finished time. There is no date filter on the page. Open logs are left out. The page says so.
+Admin and leader. One page, two blocks, all finished time. Open logs are left out. The page says so. **Por projeto** has a text search on the project name and a status select: Todas, Aberto, Encerrado. **Exportar tudo** under that block downloads the rows that match those filters.
 
 **Por projeto.** One row per project. Columns:
 
@@ -334,18 +333,18 @@ Admin and leader. One page, two blocks, all finished time. There is no date filt
 
 **Por operador.** One row per user who has finished logs. Columns: name, role, hours, and hours per project.
 
-A project row opens that project's printable sheet: equipe interna, equipe terceira, revisões, and the totals. **Exportar** at the bottom of the sheet downloads it. A person row opens a lightbox with optional De and Até. Empty dates export all time. A filled date is a São Paulo day, inclusive, matched on `started_at`. **Exportar tudo** under each block downloads that whole block with no date limit.
+A project row opens that project's printable sheet: equipe interna, equipe terceira, revisões, and the totals. **Exportar** and **Imprimir** sit together at the bottom. Print uses the browser and prints that sheet; the buttons themselves stay off the paper. A person row opens that person's sheet at `/relatorios/pessoas/{id}`: hours already finished, grouped by project and subtask, with a revision marked `(revisão)`. Optional De and Até filter that sheet. Empty dates cover all time. A filled date is a São Paulo day, inclusive, matched on `started_at`. **Exportar** and **Imprimir** sit together at the bottom of that sheet too. **Exportar tudo** under the operator block downloads every person, with no date limit.
 
 - `projetos.csv` — the whole project block. One project, when `project_id` is set, downloads as that project's name plus `.csv`
-- `pessoas.csv` — the whole operator block. One person, when `user_id` is set, downloads as that person's name plus `.csv`. Columns: nome, papel, horas, por projeto
+- `pessoas.csv` — the whole operator block. One person, when `user_id` is set, downloads as that person's name plus `.csv`. Columns: nome, papel, horas, then one column per project that appears in the file. The cell is that person's finished hours on that project, `0,00` when they have none.
 
 CSV is UTF-8 with BOM, field separator `;`, so Excel in Portuguese opens it in columns. Hours as decimal with a comma, two places (`1,50`). Money as decimal with a comma, two places, no currency symbol.
 
-Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money typed on the subtasks. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** sits at the bottom of the sheet and downloads it as `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine.
+Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money typed on the subtasks. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** and **Imprimir** sit at the bottom of the sheet. Export downloads `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine. Print is the browser print of the same sheet.
 
 ### Usuários
 
-Admin and leader. Name, email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. Only an admin can create an administrator or open an administrator’s edit form.
+Admin and leader. Name, optional email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. Clicking a row opens that person’s edit form in a lightbox on this page when the signed-in user is allowed to change them. A validation error reopens that same lightbox. Only an admin can create an administrator or open an administrator’s edit form. **Novo usuário** stays on its own page.
 
 ## 9. Validation copy
 
@@ -354,11 +353,11 @@ Return the message in Portuguese next to the field.
 | Case | Message |
 |---|---|
 | Bad login | E-mail ou senha inválidos. |
-| Same subtask already running | Esta subtarefa já está em andamento. |
+| Same subtask already running | Esta tarefa já está em andamento. |
 | Third-party or closed | Este item não aceita ponto. |
 | Duration is zero | A duração precisa ser maior que zero. |
 | Duration would end in the future | A duração não pode passar do momento atual. |
-| Duration is not hh:mm | Informe a duração no formato hh:mm. |
+| Duration is not a number of hours | Informe a duração em horas, como 1,5. |
 | Revision linked to the wrong row | A revisão precisa apontar para uma equipe terceira deste projeto. |
 | Delete project or subtask that has logs | Este item tem lançamentos. Encerre o projeto em vez de apagar. |
 | Operator hits a leader URL | 403 page: Você não tem acesso a esta página. |
@@ -373,7 +372,7 @@ Return the message in Portuguese next to the field.
 | Hours in CSV | Decimal comma, two places |
 | Empty totals | `0h 00min` and `R$ 0,00` for admin and leader. Operator screens do not render these at all. |
 
-Project planned hours on a form are edited as a decimal hour value. Subtask tempo previsto and a time-log duration are edited as `hh:mm`. Everywhere else, people read `Hh MMmin`.
+Planned hours and a time-log duration are edited as a decimal hour value (`1,5` and `1.5` both mean 90 minutes). Everywhere else, people read `Hh MMmin`.
 
 ## 11. Routes
 
@@ -401,6 +400,7 @@ Project planned hours on a form are edited as a decimal hour value. Subtask temp
 | GET, PUT | `/lancamentos/{timeLog}` | admin, leader |
 | DELETE | `/lancamentos/{timeLog}` | admin, leader |
 | GET | `/relatorios` | admin, leader |
+| GET | `/relatorios/pessoas/{user}` | admin, leader |
 | GET | `/relatorios/projetos.csv` | admin, leader |
 | GET | `/relatorios/pessoas.csv` | admin, leader |
 
@@ -410,7 +410,7 @@ Operator `GET /projetos` redirects to `/`.
 
 - HTTPS only. Redirect HTTP to HTTPS.
 - CSRF on every form.
-- Login throttled: 5 attempts per email per minute.
+- Login throttled: 5 attempts per chosen user per minute.
 - Passwords hashed with the framework default.
 - Policies: `UserPolicy`, `ProjectPolicy`, `SubtaskPolicy`, `TimeLogPolicy`. Reports use a gate `viewReports` that is true only for admin.
 - Mass assignment cannot set `role`, `budget_cents`, `kind`, or `source` from an operator request.

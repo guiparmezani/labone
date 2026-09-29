@@ -23,20 +23,20 @@
                             <form method="POST" action="{{ route('ponto.stop') }}" class="row-link">
                                 @csrf
                                 <input type="hidden" name="time_log_id" value="{{ $running->id }}">
-                                <span>{{ $subtask->name }}</span>
+                                <span>{{ $subtask->clockLabel() }}</span>
                                 <button class="btn btn-primary" type="submit">Parar</button>
                             </form>
                         @else
                             <form method="POST" action="{{ route('ponto.start') }}" class="row-link">
                                 @csrf
                                 <input type="hidden" name="subtask_id" value="{{ $subtask->id }}">
-                                <span>{{ $subtask->name }}</span>
+                                <span>{{ $subtask->clockLabel() }}</span>
                                 <button class="btn btn-primary" type="submit">Iniciar</button>
                             </form>
                         @endif
                     </li>
                 @empty
-                    <li><p>Nenhuma subtarefa interna.</p></li>
+                    <li><p>Nenhuma tarefa.</p></li>
                 @endforelse
             </ul>
             @error('subtask_id')<p class="error">{{ $message }}</p>@enderror
@@ -45,7 +45,7 @@
 
     @if ($project->isOpen())
         <section class="panel" style="margin-top: 1rem;">
-            <h2>Nova subtarefa</h2>
+            <h2>Nova tarefa</h2>
             <form method="POST" action="{{ route('subtarefas.store', $project) }}" class="stack">
                 @csrf
                 <label class="field">

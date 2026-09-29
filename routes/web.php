@@ -38,12 +38,12 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::post('/ponto/parar', [ClockController::class, 'stop'])->name('ponto.stop');
 
     Route::middleware('papel:admin,leader')->group(function () {
-        Route::post('/ponto/{timeLog}/trocar', [ClockController::class, 'switchActivity'])->name('ponto.switch');
         Route::get('/lancamentos', [TimeLogController::class, 'index'])->name('lancamentos.index');
         Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
         Route::put('/lancamentos/{timeLog}', [TimeLogController::class, 'update'])->name('lancamentos.update');
         Route::delete('/lancamentos/{timeLog}', [TimeLogController::class, 'destroy'])->name('lancamentos.destroy');
         Route::get('/relatorios', [ReportController::class, 'index'])->name('relatorios.index');
+        Route::get('/relatorios/pessoas/{user}', [ReportController::class, 'person'])->name('relatorios.person');
         Route::get('/relatorios/projetos.csv', [ReportController::class, 'projects'])->name('relatorios.projects');
         Route::get('/relatorios/pessoas.csv', [ReportController::class, 'people'])->name('relatorios.people');
     });

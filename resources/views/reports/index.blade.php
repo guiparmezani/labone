@@ -14,6 +14,22 @@
 
     <section class="report-block">
         <h2>Por projeto</h2>
+        <form method="GET" action="{{ route('relatorios.index') }}" class="panel filter-bar filter-bar-status">
+            <label class="field">
+                <span>Projeto</span>
+                <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Nome do projeto">
+            </label>
+            <label class="field">
+                <span>Situação</span>
+                <select name="status">
+                    <option value="">Todas</option>
+                    @foreach (\App\Enums\ProjectStatus::cases() as $status)
+                        <option value="{{ $status->value }}" @selected($filters['status'] === $status->value)>{{ $status->label() }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <button class="btn btn-ghost" type="submit">Filtrar</button>
+        </form>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -42,7 +58,7 @@
                 </tbody>
             </table>
         </div>
-        <a class="btn btn-primary" href="{{ route('relatorios.projects') }}">Exportar tudo</a>
+        <a class="btn btn-primary" href="{{ route('relatorios.projects', array_filter(['q' => $filters['q'], 'status' => $filters['status']])) }}">Exportar tudo</a>
     </section>
 
     <section class="report-block">
@@ -59,7 +75,7 @@
                 </thead>
                 <tbody>
                     @forelse ($operators as $operator)
-                        <tr class="is-clickable" tabindex="0" data-exportar="pessoa" data-id="{{ $operator->id }}" data-nome="{{ $operator->name }}">
+                        <tr class="is-clickable" tabindex="0" data-folha="{{ route('relatorios.person', $operator->id) }}">
                             <td>{{ $operator->name }}</td>
                             <td>{{ Role::from($operator->role)->label() }}</td>
                             <td>{{ Formato::minutos($operator->minutes) }}</td>
@@ -78,53 +94,8 @@
         <a class="btn btn-primary" href="{{ route('relatorios.people') }}">Exportar tudo</a>
     </section>
 
-    <dialog class="lightbox" id="exportar">
-        <form method="GET" id="exportar-form" class="stack" action="{{ route('relatorios.people') }}">
-            <div class="lightbox-intro">
-                <h2 id="exportar-titulo"></h2>
-                <p class="muted">Sem datas, o relatório cobre todo o histórico.</p>
-            </div>
-            <label class="field">
-                <span>De</span>
-                @include('partials.calendario', ['nome' => 'from'])
-            </label>
-            <label class="field">
-                <span>Até</span>
-                @include('partials.calendario', ['nome' => 'to'])
-            </label>
-            <input type="hidden" name="user_id" value="">
-            <div class="actions">
-                <button class="btn btn-primary" type="submit">Exportar</button>
-                <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
-            </div>
-        </form>
-    </dialog>
-
     <script>
         (function () {
-            var dialog = document.getElementById('exportar');
-            var form = document.getElementById('exportar-form');
-            var titulo = document.getElementById('exportar-titulo');
-            var pessoa = form.querySelector('[name="user_id"]');
-
-            function limparDatas() {
-                form.querySelectorAll('.calendario').forEach(function (campo) {
-                    campo.querySelector('.calendario-texto').value = '';
-                    campo.querySelector('input[type="hidden"]').value = '';
-                    campo.querySelector('.calendario-pop').hidden = true;
-                });
-            }
-
-            function abrir(linha) {
-                limparDatas();
-                titulo.tabIndex = -1;
-                titulo.textContent = linha.dataset.nome;
-                pessoa.value = linha.dataset.id;
-                dialog.showModal();
-                limparDatas();
-                titulo.focus();
-            }
-
             document.querySelectorAll('[data-folha]').forEach(function (linha) {
                 linha.addEventListener('click', function () { window.location = linha.dataset.folha; });
                 linha.addEventListener('keydown', function (event) {
@@ -133,49 +104,6 @@
                         window.location = linha.dataset.folha;
                     }
                 });
-            });
-
-            document.querySelectorAll('[data-exportar]').forEach(function (linha) {
-                linha.addEventListener('click', function () { abrir(linha); });
-                linha.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        abrir(linha);
-                    }
-                });
-            });
-
-            dialog.querySelector('[data-fechar]').addEventListener('click', function () {
-                dialog.close();
-            });
-
-            var comecouFora = false;
-
-            function noEscuro(event) {
-                var caixa = dialog.getBoundingClientRect();
-
-                return event.target === dialog && (
-                    event.clientX < caixa.left
-                    || event.clientX > caixa.right
-                    || event.clientY < caixa.top
-                    || event.clientY > caixa.bottom
-                );
-            }
-
-            dialog.addEventListener('mousedown', function (event) {
-                comecouFora = noEscuro(event);
-            });
-
-            dialog.addEventListener('click', function (event) {
-                if (comecouFora && noEscuro(event)) {
-                    dialog.close();
-                }
-
-                comecouFora = false;
-            });
-
-            form.addEventListener('submit', function () {
-                setTimeout(function () { dialog.close(); }, 0);
             });
         })();
     </script>

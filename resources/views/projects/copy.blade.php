@@ -3,7 +3,7 @@
 @section('content')
     <section class="panel panel-narrow">
         <h1>Copiar projeto</h1>
-        <p class="muted">Copia as subtarefas, os valores previstos e os alarmes de {{ $project->name }}. Horas lançadas e o valor realizado ficam de fora. O novo projeto abre em branco.</p>
+        <p class="muted">Copia as tarefas, os valores previstos e os alarmes de {{ $project->name }}. Horas lançadas e o valor realizado ficam de fora. O novo projeto abre em branco.</p>
         <form method="POST" action="{{ route('projetos.copy.store', $project) }}" class="stack">
             @csrf
             <label class="field">

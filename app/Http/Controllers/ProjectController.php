@@ -85,7 +85,7 @@ class ProjectController extends Controller
         $sheet = $this->sheet($project);
 
         return $this->download($this->exportFilename($project->name), function ($out) use ($project, $sheet) {
-            fputcsv($out, ['Grupo', 'Subtarefa', 'Equipe terceira', 'Tempo previsto', 'Tempo realizado', 'Valor previsto', 'Valor realizado', 'Revisões', 'Notas'], ';');
+            fputcsv($out, ['Grupo', 'Tarefa', 'Equipe terceira', 'Tempo previsto', 'Tempo realizado', 'Valor previsto', 'Valor realizado', 'Revisões', 'Notas'], ';');
 
             foreach ($sheet['internal'] as $subtask) {
                 fputcsv($out, [
@@ -97,7 +97,7 @@ class ProjectController extends Controller
                     $this->dinheiroCsv($subtask->budget_cents),
                     $this->dinheiroCsv($subtask->realized_cents),
                     '',
-                    '',
+                    (string) ($subtask->revision_notes ?? ''),
                 ], ';');
             }
 
@@ -111,7 +111,7 @@ class ProjectController extends Controller
                     $this->dinheiroCsv($subtask->budget_cents),
                     $this->dinheiroCsv($subtask->realized_cents),
                     (string) $sheet['revisions']->where('revision_of_subtask_id', $subtask->id)->count(),
-                    '',
+                    (string) ($subtask->revision_notes ?? ''),
                 ], ';');
             }
 
@@ -132,10 +132,10 @@ class ProjectController extends Controller
             $previstoSubtarefas = (int) $project->subtasks->sum('budget_cents');
             $realizado = (int) $project->subtasks->sum('realized_cents');
 
-            fputcsv($out, ['Totais', 'Horas previstas', Formato::horasCsv($project->planned_minutes).' do projeto + '.Formato::horasCsv($project->plannedMinutesFromSubtasks()).' das subtarefas', Formato::horasCsv($project->plannedMinutesTotal()), '', '', '', '', ''], ';');
+            fputcsv($out, ['Totais', 'Horas previstas', Formato::horasCsv($project->planned_minutes).' do projeto + '.Formato::horasCsv($project->plannedMinutesFromSubtasks()).' das tarefas', Formato::horasCsv($project->plannedMinutesTotal()), '', '', '', '', ''], ';');
             fputcsv($out, ['Totais', 'Horas realizadas', 'Inclui o ponto em andamento', '', Formato::horasCsv($project->consumedMinutes()), '', '', '', ''], ';');
-            fputcsv($out, ['Totais', 'Valor previsto', Formato::decimal($project->budget_cents).' do projeto + '.Formato::decimal($previstoSubtarefas).' das subtarefas', '', '', Formato::decimal($project->budget_cents + $previstoSubtarefas), '', '', ''], ';');
-            fputcsv($out, ['Totais', 'Valor realizado', 'Soma do que foi digitado nas subtarefas', '', '', '', Formato::decimal($realizado), '', ''], ';');
+            fputcsv($out, ['Totais', 'Valor previsto', Formato::decimal($project->budget_cents).' do projeto + '.Formato::decimal($previstoSubtarefas).' das tarefas', '', '', Formato::decimal($project->budget_cents + $previstoSubtarefas), '', '', ''], ';');
+            fputcsv($out, ['Totais', 'Valor realizado', 'Soma do que foi digitado nas tarefas', '', '', '', Formato::decimal($realizado), '', ''], ';');
         });
     }
 

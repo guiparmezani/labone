@@ -44,7 +44,7 @@
                 <tr>
                     <th>Pessoa</th>
                     <th>Projeto</th>
-                    <th>Subtarefa</th>
+                    <th>Tarefa</th>
                     <th>Início</th>
                     <th>Duração</th>
                     <th></th>
@@ -52,16 +52,14 @@
             </thead>
             <tbody>
                 @forelse ($logs as $log)
-                    <tr>
+                    @php($podeEditar = auth()->user()->can('update', $log))
+                    <tr @class(['is-clickable' => $podeEditar]) @if ($podeEditar) tabindex="0" data-abrir="editar-lancamento-{{ $log->id }}" @endif>
                         <td>{{ $log->user->name }}</td>
                         <td>{{ $log->subtask->project->name }}</td>
                         <td>{{ $log->subtask->name }}</td>
                         <td>{{ \App\Support\Formato::dataHora($log->started_at) }}</td>
                         <td>{{ $log->minutes() === null ? 'Em andamento' : \App\Support\Formato::minutos($log->minutes()) }}</td>
                         <td class="cell-end">
-                            @can('update', $log)
-                                <a href="{{ route('lancamentos.edit', $log) }}">Editar</a>
-                            @endcan
                             @can('delete', $log)
                                 <form method="POST" action="{{ route('lancamentos.destroy', $log) }}" style="display:inline" onsubmit="return confirm('Apagar este lançamento?')">
                                     @csrf @method('DELETE')
@@ -76,4 +74,89 @@
             </tbody>
         </table>
     </div>
+
+    @foreach ($logs as $log)
+        @continue(! auth()->user()->can('update', $log))
+        <dialog class="lightbox lightbox-form lightbox-calendario" id="editar-lancamento-{{ $log->id }}">
+            <form method="POST" action="{{ route('lancamentos.update', $log) }}" class="stack">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="lightbox" value="editar-lancamento-{{ $log->id }}">
+                <h2>Editar lançamento</h2>
+                @include('time_logs._form', ['log' => $log, 'lightbox' => 'editar-lancamento-'.$log->id])
+                <div class="actions">
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
+                </div>
+            </form>
+        </dialog>
+    @endforeach
+
+    @if (old('lightbox'))
+        <script>
+            document.getElementById(@json(old('lightbox')))?.showModal();
+        </script>
+    @endif
+
+    <script>
+        (function () {
+            document.querySelectorAll('[data-abrir]').forEach(function (abrir) {
+                function abrirDialogo() {
+                    document.getElementById(abrir.getAttribute('data-abrir'))?.showModal();
+                }
+
+                abrir.addEventListener('click', function (event) {
+                    if (abrir.tagName === 'TR' && event.target.closest('button, a, form, input, select, textarea')) {
+                        return;
+                    }
+
+                    abrirDialogo();
+                });
+
+                abrir.addEventListener('keydown', function (event) {
+                    if (event.target !== abrir) {
+                        return;
+                    }
+
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        abrirDialogo();
+                    }
+                });
+            });
+
+            document.querySelectorAll('dialog.lightbox').forEach(function (dialog) {
+                var comecouFora = false;
+
+                function noEscuro(event) {
+                    var caixa = dialog.getBoundingClientRect();
+
+                    return event.target === dialog && (
+                        event.clientX < caixa.left
+                        || event.clientX > caixa.right
+                        || event.clientY < caixa.top
+                        || event.clientY > caixa.bottom
+                    );
+                }
+
+                dialog.addEventListener('mousedown', function (event) {
+                    comecouFora = noEscuro(event);
+                });
+
+                dialog.addEventListener('click', function (event) {
+                    if (comecouFora && noEscuro(event)) {
+                        dialog.close();
+                    }
+
+                    comecouFora = false;
+                });
+
+                dialog.querySelectorAll('[data-fechar]').forEach(function (fechar) {
+                    fechar.addEventListener('click', function () {
+                        dialog.close();
+                    });
+                });
+            });
+        })();
+    </script>
 @endsection

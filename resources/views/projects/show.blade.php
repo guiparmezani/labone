@@ -7,8 +7,8 @@
 @section('content')
     <div class="page-head">
         <div>
-            <h1>{{ $project->name }}</h1>
-            <p class="muted">{{ $project->status->label() }} · {{ Formato::reais($project->budget_cents) }} · {{ Formato::minutos($project->plannedMinutesTotal()) }} previstas ({{ Formato::minutos($project->planned_minutes) }} do projeto + {{ Formato::minutos($project->plannedMinutesFromSubtasks()) }} das subtarefas) · {{ Formato::minutos($project->loggedMinutes()) }} lançadas</p>
+            <h1><a href="{{ route('projetos.edit', $project) }}">{{ $project->name }}</a></h1>
+            <p class="muted">{{ $project->status->label() }} · {{ Formato::reais($project->budget_cents) }} · {{ Formato::minutos($project->plannedMinutesTotal()) }} previstas ({{ Formato::minutos($project->planned_minutes) }} do projeto + {{ Formato::minutos($project->plannedMinutesFromSubtasks()) }} das tarefas) · {{ Formato::minutos($project->loggedMinutes()) }} lançadas</p>
         </div>
         <div class="menu">
             <button class="btn btn-ghost menu-button" type="button" data-menu aria-expanded="false" aria-haspopup="menu" aria-label="Ações do projeto">...</button>
@@ -17,7 +17,6 @@
                     <a href="{{ route('projetos.ponto', $project) }}">Ponto</a>
                 @endif
                 <a href="{{ route('projetos.relatorio', $project) }}">Relatório</a>
-                <a href="{{ route('projetos.edit', $project) }}">Editar</a>
                 <a href="{{ route('projetos.copy', $project) }}">Copiar</a>
                 @if ($project->isOpen())
                     <form method="POST" action="{{ route('projetos.close', $project) }}">@csrf<button type="submit">Encerrar</button></form>
@@ -40,7 +39,7 @@
     @endif
 
     <section class="panel" style="margin-bottom: 1rem;">
-        <h2>Subtarefas internas</h2>
+        <h2>Tarefas</h2>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -56,11 +55,14 @@
                 </thead>
                 <tbody>
                     @forelse ($internal as $subtask)
-                        <tr>
+                        <tr class="is-clickable" tabindex="0" data-abrir="editar-{{ $subtask->id }}">
                             <td>
                                 {{ $subtask->name }}
                                 @if ($subtask->is_revision)
                                     <span class="muted">· Revisão</span>
+                                @endif
+                                @if ($subtask->revision_notes)
+                                    <br><span class="muted">{{ $subtask->revision_notes }}</span>
                                 @endif
                             </td>
                             <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
@@ -75,9 +77,8 @@
                                 @endif
                             </td>
                             <td class="cell-end">
-                                <button class="linkish" type="button" data-abrir="editar-{{ $subtask->id }}">Editar</button>
                                 @unless ($subtask->timeLogs()->exists())
-                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta subtarefa?')">
+                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta tarefa?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-danger" type="submit">Apagar</button>
                                     </form>
@@ -85,13 +86,13 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7">Nenhuma subtarefa interna.</td></tr>
+                        <tr><td colspan="7">Nenhuma tarefa.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         @if ($project->isOpen())
-            <button class="btn btn-primary" type="button" data-abrir="nova-interna">Adicionar subtarefa</button>
+            <button class="btn btn-primary" type="button" data-abrir="nova-interna">Adicionar tarefa</button>
         @endif
     </section>
 
@@ -112,11 +113,14 @@
                 </thead>
                 <tbody>
                     @forelse ($thirdParty as $subtask)
-                        <tr>
+                        <tr class="is-clickable" tabindex="0" data-abrir="editar-{{ $subtask->id }}">
                             <td>
                                 {{ $subtask->name }}
                                 @if ($subtask->is_revision)
                                     <span class="muted">· Revisão</span>
+                                @endif
+                                @if ($subtask->revision_notes)
+                                    <br><span class="muted">{{ $subtask->revision_notes }}</span>
                                 @endif
                             </td>
                             <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
@@ -130,9 +134,8 @@
                                 @endif
                             </td>
                             <td class="cell-end">
-                                <button class="linkish" type="button" data-abrir="editar-{{ $subtask->id }}">Editar</button>
                                 @unless ($subtask->timeLogs()->exists())
-                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta subtarefa?')">
+                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta tarefa?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-danger" type="submit">Apagar</button>
                                     </form>
@@ -140,7 +143,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6">Nenhuma subtarefa de equipe terceira.</td></tr>
+                        <tr><td colspan="6">Nenhuma tarefa de equipe terceira.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -153,7 +156,7 @@
     @if ($project->isOpen())
         @include('subtasks._dialog', [
             'id' => 'nova-interna',
-            'titulo' => 'Nova subtarefa',
+            'titulo' => 'Nova tarefa',
             'action' => route('subtarefas.store', $project),
             'metodo' => 'POST',
             'subtask' => null,
@@ -174,7 +177,7 @@
     @foreach ($internal as $subtask)
         @include('subtasks._dialog', [
             'id' => 'editar-'.$subtask->id,
-            'titulo' => 'Editar subtarefa',
+            'titulo' => 'Editar tarefa',
             'action' => route('subtarefas.update', $subtask),
             'metodo' => 'PUT',
             'subtask' => $subtask,
@@ -186,7 +189,7 @@
     @foreach ($thirdParty as $subtask)
         @include('subtasks._dialog', [
             'id' => 'editar-'.$subtask->id,
-            'titulo' => 'Editar subtarefa',
+            'titulo' => 'Editar tarefa',
             'action' => route('subtarefas.update', $subtask),
             'metodo' => 'PUT',
             'subtask' => $subtask,
@@ -227,8 +230,27 @@
             });
 
             document.querySelectorAll('[data-abrir]').forEach(function (abrir) {
-                abrir.addEventListener('click', function () {
+                function abrirDialogo() {
                     document.getElementById(abrir.getAttribute('data-abrir'))?.showModal();
+                }
+
+                abrir.addEventListener('click', function (event) {
+                    if (abrir.tagName === 'TR' && event.target.closest('button, a, form, input, select, textarea')) {
+                        return;
+                    }
+
+                    abrirDialogo();
+                });
+
+                abrir.addEventListener('keydown', function (event) {
+                    if (event.target !== abrir) {
+                        return;
+                    }
+
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        abrirDialogo();
+                    }
                 });
             });
 

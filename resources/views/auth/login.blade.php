@@ -3,14 +3,19 @@
 @section('content')
     <section class="panel panel-narrow">
         <h1>Entrar</h1>
-        <p class="muted">Use o e-mail e a senha que o administrador passou.</p>
+        <p class="muted">Escolha seu nome e digite a senha.</p>
 
         <form method="POST" action="{{ route('entrar.store') }}" class="stack">
             @csrf
             <label class="field">
-                <span>E-mail</span>
-                <input type="email" name="email" value="{{ old('email') }}" autocomplete="username" required autofocus>
-                @error('email')
+                <span>Nome</span>
+                <select name="user_id" required autofocus>
+                    <option value="">Escolha seu nome</option>
+                    @foreach ($users as $user)
+                        <option value="{{ $user->id }}" @selected((string) old('user_id') === (string) $user->id)>{{ $user->name }}</option>
+                    @endforeach
+                </select>
+                @error('user_id')
                     <small class="error">{{ $message }}</small>
                 @enderror
             </label>

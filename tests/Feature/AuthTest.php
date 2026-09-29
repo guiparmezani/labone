@@ -18,12 +18,17 @@ class AuthTest extends TestCase
     public function test_login_com_senha_certa_entra(): void
     {
         $user = User::factory()->admin()->create([
-            'email' => 'ana@oficina.test',
+            'name' => 'Ana Oficina',
             'password' => 'senha-segura',
         ]);
 
+        $this->get('/entrar')
+            ->assertOk()
+            ->assertSee('Ana Oficina')
+            ->assertDontSee('type="email"', false);
+
         $this->post('/entrar', [
-            'email' => 'ana@oficina.test',
+            'user_id' => $user->id,
             'password' => 'senha-segura',
         ])->assertRedirect('/');
 
@@ -32,28 +37,30 @@ class AuthTest extends TestCase
 
     public function test_senha_errada_nao_revela_o_motivo(): void
     {
-        User::factory()->create([
-            'email' => 'ana@oficina.test',
+        $user = User::factory()->create([
+            'name' => 'Ana Oficina',
             'password' => 'senha-segura',
         ]);
 
         $this->post('/entrar', [
-            'email' => 'ana@oficina.test',
+            'user_id' => $user->id,
             'password' => 'outra-senha',
-        ])->assertInvalid(['email' => 'E-mail ou senha inválidos.']);
+        ])->assertInvalid(['user_id' => 'Não foi possível entrar.']);
     }
 
     public function test_conta_inativa_nao_entra(): void
     {
-        User::factory()->inactive()->create([
-            'email' => 'ana@oficina.test',
+        $user = User::factory()->inactive()->create([
+            'name' => 'Conta Inativa',
             'password' => 'senha-segura',
         ]);
 
+        $this->get('/entrar')->assertOk()->assertDontSee('Conta Inativa');
+
         $this->post('/entrar', [
-            'email' => 'ana@oficina.test',
+            'user_id' => $user->id,
             'password' => 'senha-segura',
-        ])->assertInvalid(['email' => 'E-mail ou senha inválidos.']);
+        ])->assertInvalid(['user_id' => 'Não foi possível entrar.']);
 
         $this->assertGuest();
     }
@@ -67,25 +74,25 @@ class AuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_sexta_tentativa_no_mesmo_email_e_recusada(): void
+    public function test_sexta_tentativa_na_mesma_pessoa_e_recusada(): void
     {
-        User::factory()->create([
-            'email' => 'ana@oficina.test',
+        $user = User::factory()->create([
+            'name' => 'Ana Oficina',
             'password' => 'senha-segura',
         ]);
 
         for ($i = 0; $i < 5; $i++) {
             $this->post('/entrar', [
-                'email' => 'ana@oficina.test',
+                'user_id' => $user->id,
                 'password' => 'errada-'.$i,
-            ])->assertInvalid(['email' => 'E-mail ou senha inválidos.']);
+            ])->assertInvalid(['user_id' => 'Não foi possível entrar.']);
         }
 
         $this->post('/entrar', [
-            'email' => 'ana@oficina.test',
+            'user_id' => $user->id,
             'password' => 'senha-segura',
         ])->assertInvalid([
-            'email' => 'Muitas tentativas. Espere um minuto e tente de novo.',
+            'user_id' => 'Muitas tentativas. Espere um minuto e tente de novo.',
         ]);
     }
 }
