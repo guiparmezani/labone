@@ -10,24 +10,31 @@
     <header class="topbar">
         <a class="brand" href="{{ auth()->check() ? route('inicio') : route('entrar') }}">Controle de projetos</a>
         @auth
-            <nav class="nav">
-                <a href="{{ route('inicio') }}" @class(['is-current' => request()->routeIs('inicio')])>Início</a>
-                @if (auth()->user()->managesProjects())
-                    <a href="{{ route('projetos.index') }}" @class(['is-current' => request()->routeIs('projetos.*')])>Projetos</a>
-                    <a href="{{ route('lancamentos.index') }}" @class(['is-current' => request()->routeIs('lancamentos.*')])>Lançamentos</a>
-                    <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
-                @endif
-                @if (auth()->user()->managesProjects())
-                    <a href="{{ route('usuarios.index') }}" @class(['is-current' => request()->routeIs('usuarios.*')])>Usuários</a>
-                @endif
-            </nav>
-            <div class="who">
-                <span>{{ auth()->user()->name }}</span>
-                <span class="tag">{{ auth()->user()->role->label() }}</span>
-                <form method="POST" action="{{ route('sair') }}">
-                    @csrf
-                    <button class="btn btn-ghost" type="submit">Sair</button>
-                </form>
+            <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="topbar-menu" id="menu-principal">
+                <nav class="nav">
+                    <a href="{{ route('inicio') }}" @class(['is-current' => request()->routeIs('inicio')])>Início</a>
+                    @if (auth()->user()->managesProjects())
+                        <a href="{{ route('projetos.index') }}" @class(['is-current' => request()->routeIs('projetos.*')])>Projetos</a>
+                        <a href="{{ route('lancamentos.index') }}" @class(['is-current' => request()->routeIs('lancamentos.*')])>Lançamentos</a>
+                        <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
+                    @endif
+                    @if (auth()->user()->managesProjects())
+                        <a href="{{ route('usuarios.index') }}" @class(['is-current' => request()->routeIs('usuarios.*')])>Usuários</a>
+                    @endif
+                </nav>
+                <div class="who">
+                    <span>{{ auth()->user()->name }}</span>
+                    <span class="tag">{{ auth()->user()->role->label() }}</span>
+                    <form method="POST" action="{{ route('sair') }}">
+                        @csrf
+                        <button class="btn btn-ghost" type="submit">Sair</button>
+                    </form>
+                </div>
             </div>
         @endauth
     </header>
@@ -38,6 +45,23 @@
         @endif
         @yield('content')
     </main>
+    <script>
+        (function () {
+            var botao = document.querySelector('.nav-toggle');
+            var menu = document.getElementById('menu-principal');
+
+            if (!botao || !menu) {
+                return;
+            }
+
+            botao.addEventListener('click', function () {
+                var aberto = botao.getAttribute('aria-expanded') === 'true';
+                botao.setAttribute('aria-expanded', aberto ? 'false' : 'true');
+                botao.setAttribute('aria-label', aberto ? 'Abrir menu' : 'Fechar menu');
+                menu.classList.toggle('is-open', !aberto);
+            });
+        })();
+    </script>
     <script src="{{ asset('js/timer.js') }}"></script>
     <script src="{{ asset('js/calendario.js') }}"></script>
 </body>
