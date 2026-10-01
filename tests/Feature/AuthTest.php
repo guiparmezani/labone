@@ -25,7 +25,10 @@ class AuthTest extends TestCase
         $this->get('/entrar')
             ->assertOk()
             ->assertSee('Ana Oficina')
-            ->assertDontSee('type="email"', false);
+            ->assertDontSee('type="email"', false)
+            ->assertSee('property="og:title" content="Controle de projetos"', false)
+            ->assertSee('O ponto da fábrica, no molde certo.', false)
+            ->assertSee('/og.png', false);
 
         $this->post('/entrar', [
             'user_id' => $user->id,

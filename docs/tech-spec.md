@@ -255,6 +255,8 @@ Leaders and admin may start a timer for themselves or for any active person, and
 
 Navigation shows only the links that role can open.
 
+Sharing the address shows the title **Controle de projetos**, the line "O ponto da fábrica, no molde certo. Acompanhe horas, tarefas e orçamento de cada projeto.", and the Laravel mark at `/og.png`.
+
 Phone layout is a single column below 768px. Below that width the top links, the signed-in name, and **Sair** sit behind a hamburger button so the bar stays on the screen. The operator's open timer, when they have one, stays at the top of the home screen with a full-width **Parar** button. Admin tables scroll sideways on a phone. That is enough. The clock flow is the one that has to feel obvious on a phone.
 
 ### Entrar

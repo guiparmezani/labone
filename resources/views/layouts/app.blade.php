@@ -3,7 +3,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Controle de projetos' }}</title>
+    @php
+        $titulo = $title ?? 'Controle de projetos';
+        $resumo = 'O ponto da fábrica, no molde certo. Acompanhe horas, tarefas e orçamento de cada projeto.';
+    @endphp
+    <title>{{ $titulo }}</title>
+    <meta name="description" content="{{ $resumo }}">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="Controle de projetos">
+    <meta property="og:title" content="{{ $titulo }}">
+    <meta property="og:description" content="{{ $resumo }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:image" content="{{ url('/og.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Controle de projetos">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $titulo }}">
+    <meta name="twitter:description" content="{{ $resumo }}">
+    <meta name="twitter:image" content="{{ url('/og.png') }}">
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
 <body>
