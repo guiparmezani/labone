@@ -68,6 +68,7 @@
             <input type="hidden" name="lightbox" value="novo-usuario">
             <h2>Novo usuário</h2>
             @include('users._form', ['user' => new \App\Models\User(), 'lightbox' => 'novo-usuario'])
+            <hr>
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar</button>
             </div>
@@ -84,6 +85,7 @@
                 <input type="hidden" name="lightbox" value="editar-usuario-{{ $user->id }}">
                 <h2>Editar usuário</h2>
                 @include('users._form', ['user' => $user, 'lightbox' => 'editar-usuario-'.$user->id])
+                <hr>
                 <div class="actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>
                     @if ($user->active)

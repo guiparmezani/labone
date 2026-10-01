@@ -73,6 +73,30 @@
     </main>
     @include('partials.confirmar-apagar')
     <script>
+        document.addEventListener('close', function (event) {
+            var dialog = event.target;
+
+            if (!(dialog instanceof HTMLDialogElement) || !dialog.classList.contains('lightbox')) {
+                return;
+            }
+
+            dialog.querySelectorAll('form').forEach(function (form) {
+                var metodo = form.querySelector('input[name="_method"]');
+
+                if (!metodo || (metodo.value !== 'PUT' && metodo.value !== 'PATCH')) {
+                    return;
+                }
+
+                form.reset();
+                form.querySelectorAll('input, select, textarea').forEach(function (campo) {
+                    if (campo.setCustomValidity) {
+                        campo.setCustomValidity('');
+                    }
+                });
+            });
+        }, true);
+    </script>
+    <script>
         (function () {
             var botao = document.querySelector('.nav-toggle');
             var menu = document.getElementById('menu-principal');

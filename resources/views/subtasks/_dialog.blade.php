@@ -135,6 +135,7 @@
             </label>
         </div>
 
+        <hr>
         <div class="actions">
             <button class="btn btn-primary" type="submit">Salvar</button>
         </div>

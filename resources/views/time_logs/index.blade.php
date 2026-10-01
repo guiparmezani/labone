@@ -97,6 +97,7 @@
                 <input type="hidden" name="lightbox" value="editar-lancamento-{{ $log->id }}">
                 <h2>Editar lançamento</h2>
                 @include('time_logs._form', ['log' => $log, 'lightbox' => 'editar-lancamento-'.$log->id])
+                <hr>
                 <div class="actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>
                 </div>

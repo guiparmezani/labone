@@ -55,6 +55,7 @@
             <input type="hidden" name="lightbox" value="novo-projeto">
             <h2>Novo projeto</h2>
             @include('projects._form', ['project' => new \App\Models\Project(), 'lightbox' => 'novo-projeto'])
+            <hr>
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar</button>
             </div>
@@ -77,6 +78,7 @@
             @error('arquivo')
                 <p class="error">{{ $message }}</p>
             @enderror
+            <hr>
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Importar</button>
             </div>

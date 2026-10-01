@@ -63,6 +63,12 @@ tr.is-clickable:focus-visible { background: #f4f3f1; }
 .lightbox.lightbox-form.lightbox-calendario { overflow: visible; }
 .lightbox h2 { padding-right: 2.5rem; }
 
+.lightbox hr {
+    margin: 0.45rem 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+}
+
 .lightbox-fechar {
     position: absolute;
     z-index: 2;
@@ -431,6 +437,14 @@ tr.is-clickable:focus-visible { background: #f4f3f1; }
     text-decoration: underline;
     text-underline-offset: 0.18em;
     cursor: pointer;
+}
+
+.lightbox .link-btn,
+.lightbox .link-danger { font-size: 14px; }
+
+.lightbox .link-btn {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 

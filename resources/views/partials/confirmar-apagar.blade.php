@@ -9,6 +9,7 @@
             <input type="checkbox" data-confirmar-check>
             <span>Apagar o projeto e todos os lançamentos.</span>
         </label>
+        <hr>
         <div class="actions">
             <button class="btn btn-danger" type="button" data-confirmar-ok disabled>Apagar</button>
         </div>
