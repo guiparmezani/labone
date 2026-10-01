@@ -7,13 +7,12 @@
     </div>
 
     <div class="table-wrap">
-        <table>
+        <table class="user-list">
             <thead>
                 <tr>
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Papel</th>
-                    <th>Situação</th>
                 </tr>
             </thead>
             <tbody>
@@ -23,18 +22,47 @@
                         <td>{{ $user->name }}</td>
                         <td>{{ $user->email ?: '—' }}</td>
                         <td>{{ $user->role->label() }}</td>
-                        <td>{{ $user->active ? 'Ativa' : 'Inativa' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">Nenhum usuário cadastrado.</td>
+                        <td colspan="3">Nenhum usuário cadastrado.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
+    <section class="archived-users">
+        <h2>Usuários arquivados</h2>
+        <div class="table-wrap">
+            <table class="user-list">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Papel</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($archived as $user)
+                        @php($podeEditar = auth()->user()->can('update', $user))
+                        <tr @class(['is-clickable' => $podeEditar]) @if ($podeEditar) tabindex="0" data-abrir="editar-usuario-{{ $user->id }}" @endif>
+                            <td>{{ $user->name }}</td>
+                            <td>{{ $user->email ?: '—' }}</td>
+                            <td>{{ $user->role->label() }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3">Nenhum usuário arquivado.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <dialog class="lightbox lightbox-form" id="novo-usuario">
+        @include('partials.lightbox-fechar')
         <form method="POST" action="{{ route('usuarios.store') }}" class="stack">
             @csrf
             <input type="hidden" name="lightbox" value="novo-usuario">
@@ -42,14 +70,14 @@
             @include('users._form', ['user' => new \App\Models\User(), 'lightbox' => 'novo-usuario'])
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar</button>
-                <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
             </div>
         </form>
     </dialog>
 
-    @foreach ($users as $user)
+    @foreach ($users->concat($archived) as $user)
         @continue(! auth()->user()->can('update', $user))
         <dialog class="lightbox lightbox-form" id="editar-usuario-{{ $user->id }}">
+            @include('partials.lightbox-fechar')
             <form method="POST" action="{{ route('usuarios.update', $user) }}" class="stack">
                 @csrf
                 @method('PUT')
@@ -58,9 +86,31 @@
                 @include('users._form', ['user' => $user, 'lightbox' => 'editar-usuario-'.$user->id])
                 <div class="actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>
-                    <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
+                    @if ($user->active)
+                        <button class="btn btn-danger" type="submit" form="arquivar-usuario-{{ $user->id }}">Arquivar</button>
+                    @else
+                        <button class="btn btn-ghost" type="submit" form="reativar-usuario-{{ $user->id }}">Reativar</button>
+                    @endif
+                    @can('delete', $user)
+                        <button class="link-danger" type="submit" form="apagar-usuario-{{ $user->id }}">Apagar</button>
+                    @endcan
                 </div>
             </form>
+            @if ($user->active)
+                <form id="arquivar-usuario-{{ $user->id }}" method="POST" action="{{ route('usuarios.archive', $user) }}" onsubmit="return confirm('Arquivar este usuário?')" hidden>
+                    @csrf
+                </form>
+            @else
+                <form id="reativar-usuario-{{ $user->id }}" method="POST" action="{{ route('usuarios.reactivate', $user) }}" hidden>
+                    @csrf
+                </form>
+            @endif
+            @can('delete', $user)
+                <form id="apagar-usuario-{{ $user->id }}" method="POST" action="{{ route('usuarios.destroy', $user) }}" data-confirmar="Apagar este usuário?" hidden>
+                    @csrf
+                    @method('DELETE')
+                </form>
+            @endcan
         </dialog>
     @endforeach
 
@@ -131,4 +181,5 @@
             });
         })();
     </script>
+    @include('users._jornada')
 @endsection

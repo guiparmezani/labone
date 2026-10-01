@@ -30,26 +30,6 @@
                     @endforelse
                 </ul>
             </section>
-            @isset($reachedAlerts)
-                <section class="panel">
-                    <h2>Alertas atingidos</h2>
-                    <ul class="list">
-                        @forelse ($reachedAlerts as $alert)
-                            <li>
-                                <a class="row-link" href="{{ route('projetos.show', $alert->project) }}">
-                                    <span>{{ $alert->project->name }} — {{ $alert->name }} · {{ $alert->alert_percentage }}%</span>
-                                    <span class="muted">
-                                        {{ \App\Support\Formato::minutos($alert->consumedMinutes()) }}
-                                        de {{ \App\Support\Formato::minutos($alert->planned_minutes) }} previstas
-                                    </span>
-                                </a>
-                            </li>
-                        @empty
-                            <li><p class="muted">Nenhum alerta atingido.</p></li>
-                        @endforelse
-                    </ul>
-                </section>
-            @endisset
             <section class="panel">
                 <h2>Iniciar ponto</h2>
                 @if ($clockSubtasks->isEmpty())

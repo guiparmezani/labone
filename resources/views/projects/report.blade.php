@@ -4,7 +4,7 @@
     use App\Support\Formato;
 
     $previstoSubtarefas = (int) $project->subtasks->sum('budget_cents');
-    $realizado = (int) $project->subtasks->sum('realized_cents');
+    $realizado = (int) $project->subtasks->sum(fn ($subtask) => $subtask->realizedTotalCents());
     $revisions = $project->subtasks->where('is_revision', true);
 @endphp
 
@@ -49,7 +49,7 @@
                         <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                         <td>{{ Formato::minutos($subtask->consumedMinutes()) }}</td>
                         <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
-                        <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
+                        <td>{{ $subtask->realizedLabel() }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5">Nenhuma tarefa.</td></tr>
@@ -79,7 +79,7 @@
                         </td>
                         <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                         <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
-                        <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
+                        <td>{{ $subtask->realizedLabel() }}</td>
                         <td>{{ $revisions->where('revision_of_subtask_id', $subtask->id)->count() }}</td>
                     </tr>
                 @empty
@@ -114,7 +114,7 @@
                             <td>{{ $revision->planned_minutes !== null ? Formato::minutos($revision->planned_minutes) : '—' }}</td>
                             <td>{{ Formato::minutos($revision->consumedMinutes()) }}</td>
                             <td>{{ $revision->budget_cents !== null ? Formato::reais($revision->budget_cents) : '—' }}</td>
-                            <td>{{ $revision->realized_cents !== null ? Formato::reais($revision->realized_cents) : '—' }}</td>
+                            <td>{{ $revision->realizedLabel() }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -140,7 +140,7 @@
             <div>
                 <p class="muted">Valor realizado</p>
                 <strong>{{ Formato::reais($realizado) }}</strong>
-                <p class="muted">Soma do que foi digitado nas tarefas</p>
+                <p class="muted">Digitado nas tarefas + horas pelo valor hora</p>
             </div>
         </div>
 

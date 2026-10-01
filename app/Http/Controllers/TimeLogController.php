@@ -19,7 +19,7 @@ class TimeLogController extends Controller
     {
         $this->authorize('viewAny', TimeLog::class);
 
-        [$from, $to] = $this->range($request);
+        [$from, $to, $mes] = $this->range($request);
 
         $logs = TimeLog::query()
             ->with(['user', 'subtask.project'])
@@ -39,9 +39,12 @@ class TimeLogController extends Controller
             'filters' => [
                 'project_id' => $request->integer('project_id') ?: '',
                 'user_id' => $request->integer('user_id') ?: '',
+                'mes' => $mes?->format('Y-m') ?? '',
                 'from' => $from->timezone(Formato::TZ)->toDateString(),
                 'to' => $to->timezone(Formato::TZ)->toDateString(),
             ],
+            'periodo' => $mes ? $this->nomeDoMes($mes) : 'Período selecionado',
+            'meses' => $this->meses($mes),
         ]);
     }
 
@@ -87,22 +90,103 @@ class TimeLogController extends Controller
     }
 
     /**
-     * @return array{0: Carbon, 1: Carbon}
+     * @return array{0: Carbon, 1: Carbon, 2: ?Carbon}
      */
     private function range(Request $request): array
     {
+        $mesPedido = $this->mesValido($request->string('mes')->toString());
         $fromInput = $request->string('from')->toString();
         $toInput = $request->string('to')->toString();
 
-        $from = $fromInput !== ''
-            ? Carbon::parse($fromInput, Formato::TZ)->startOfDay()->utc()
-            : Carbon::now(Formato::TZ)->startOfMonth()->utc();
+        if ($fromInput === '' && $toInput === '') {
+            $mes = $mesPedido ?? Carbon::now(Formato::TZ)->startOfMonth();
 
-        $to = $toInput !== ''
-            ? Carbon::parse($toInput, Formato::TZ)->endOfDay()->utc()
-            : Carbon::now(Formato::TZ)->endOfMonth()->utc();
+            return [$this->inicioUtc($mes), $this->fimUtc($mes), $mes];
+        }
 
-        return [$from, $to];
+        $from = Carbon::parse($fromInput !== '' ? $fromInput : $toInput, Formato::TZ)->startOfDay();
+        $to = Carbon::parse($toInput !== '' ? $toInput : $fromInput, Formato::TZ)->endOfDay();
+
+        if ($mesPedido !== null && $this->cabeNoMes($from, $to, $mesPedido)) {
+            return [$from->utc(), $to->utc(), $mesPedido];
+        }
+
+        return [$from->utc(), $to->utc(), $this->mesCheio($from, $to)];
+    }
+
+    private function mesValido(string $mes): ?Carbon
+    {
+        if (preg_match('/^\d{4}-\d{2}$/', $mes) !== 1) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $mes.'-01', Formato::TZ)->startOfMonth();
+    }
+
+    private function cabeNoMes(Carbon $from, Carbon $to, Carbon $mes): bool
+    {
+        return $from->toDateString() === $mes->toDateString()
+            && $to->toDateString() === $mes->copy()->endOfMonth()->toDateString();
+    }
+
+    private function mesCheio(Carbon $from, Carbon $to): ?Carbon
+    {
+        $inicio = $from->copy()->startOfMonth();
+
+        if (! $this->cabeNoMes($from, $to, $inicio)) {
+            return null;
+        }
+
+        return $inicio;
+    }
+
+    private function inicioUtc(Carbon $mes): Carbon
+    {
+        return $mes->copy()->timezone(Formato::TZ)->startOfMonth()->utc();
+    }
+
+    private function fimUtc(Carbon $mes): Carbon
+    {
+        return $mes->copy()->timezone(Formato::TZ)->endOfMonth()->utc();
+    }
+
+    private function nomeDoMes(Carbon $mes): string
+    {
+        $nome = $mes->copy()->locale('pt_BR')->translatedFormat('F');
+
+        return mb_strtoupper(mb_substr($nome, 0, 1)).mb_substr($nome, 1).' de '.$mes->year;
+    }
+
+    /**
+     * @return list<Carbon>
+     */
+    private function meses(?Carbon $selecionado): array
+    {
+        $agora = Carbon::now(Formato::TZ)->startOfMonth();
+        $primeiro = TimeLog::query()->orderBy('started_at')->value('started_at');
+        $comeco = $primeiro
+            ? Carbon::parse($primeiro)->timezone(Formato::TZ)->startOfMonth()
+            : $agora->copy();
+
+        if ($selecionado !== null && $selecionado->lt($comeco)) {
+            $comeco = $selecionado->copy()->startOfMonth();
+        }
+
+        $fim = $agora->copy();
+
+        if ($selecionado !== null && $selecionado->gt($fim)) {
+            $fim = $selecionado->copy()->startOfMonth();
+        }
+
+        $lista = [];
+        $cursor = $fim->copy();
+
+        while ($cursor->greaterThanOrEqualTo($comeco)) {
+            $lista[] = $cursor->copy();
+            $cursor->subMonth();
+        }
+
+        return $lista;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Role;
+use App\Http\Requests\Concerns\ValidatesUserShift;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class StoreUserRequest extends FormRequest
 {
+    use ValidatesUserShift;
+
     public function authorize(): bool
     {
         return $this->user()?->managesProjects() ?? false;
@@ -23,6 +26,7 @@ class StoreUserRequest extends FormRequest
             'name' => trim((string) $this->input('name')),
             'email' => $email === '' ? null : $email,
         ]);
+        $this->mergeShift();
     }
 
     /**
@@ -39,6 +43,7 @@ class StoreUserRequest extends FormRequest
                 $this->user()->assignableRoles(),
             ))],
             'active' => ['required', 'boolean'],
+            ...$this->shiftRules(),
         ];
     }
 
@@ -69,6 +74,7 @@ class StoreUserRequest extends FormRequest
             'role.in' => $this->user()?->isAdmin()
                 ? 'Escolha o papel.'
                 : 'Você não pode definir o papel de administrador.',
+            ...$this->shiftMessages(),
         ];
     }
 }

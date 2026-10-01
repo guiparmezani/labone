@@ -39,6 +39,12 @@
                 <nav class="nav">
                     <a href="{{ route('inicio') }}" @class(['is-current' => request()->routeIs('inicio')])>Início</a>
                     @if (auth()->user()->managesProjects())
+                        <a href="{{ route('alertas.index') }}" @class(['is-current' => request()->routeIs('alertas.*')])>
+                            Alertas
+                            @if (($alertasPendentes ?? 0) > 0)
+                                <span class="nav-count">({{ $alertasPendentes }})</span>
+                            @endif
+                        </a>
                         <a href="{{ route('projetos.index') }}" @class(['is-current' => request()->routeIs('projetos.*')])>Projetos</a>
                         <a href="{{ route('lancamentos.index') }}" @class(['is-current' => request()->routeIs('lancamentos.*')])>Lançamentos</a>
                         <a href="{{ route('relatorios.index') }}" @class(['is-current' => request()->routeIs('relatorios.*')])>Relatórios</a>
@@ -65,6 +71,7 @@
         @endif
         @yield('content')
     </main>
+    @include('partials.confirmar-apagar')
     <script>
         (function () {
             var botao = document.querySelector('.nav-toggle');

@@ -24,9 +24,10 @@
                 @else
                     <form method="POST" action="{{ route('projetos.reopen', $project) }}">@csrf<button type="submit">Reabrir</button></form>
                 @endif
-                <form method="POST" action="{{ route('projetos.destroy', $project) }}" onsubmit="return confirm('Apagar este projeto?')">
+                <form method="POST" action="{{ route('projetos.destroy', $project) }}" data-confirmar-projeto>
                     @csrf
                     @method('DELETE')
+                    <input type="hidden" name="apagar_lancamentos" value="">
                     <button class="is-danger" type="submit">Apagar</button>
                 </form>
             </div>
@@ -69,7 +70,7 @@
                             <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                             <td>{{ Formato::minutos($subtask->loggedMinutes()) }}</td>
                             <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
-                            <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
+                            <td>{{ $subtask->realizedLabel() }}</td>
                             <td>
                                 @if ($subtask->alert_enabled && $subtask->alert_percentage)
                                     {{ $subtask->alert_percentage }}%@if ($subtask->alertReached()) · Atingido @endif
@@ -79,7 +80,7 @@
                             </td>
                             <td class="cell-end">
                                 @unless ($subtask->timeLogs()->exists())
-                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta tarefa?')">
+                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" data-confirmar="Apagar esta tarefa?">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-danger" type="submit">Apagar</button>
                                     </form>
@@ -126,7 +127,7 @@
                             </td>
                             <td>{{ $subtask->planned_minutes !== null ? Formato::minutos($subtask->planned_minutes) : '—' }}</td>
                             <td>{{ $subtask->budget_cents !== null ? Formato::reais($subtask->budget_cents) : '—' }}</td>
-                            <td>{{ $subtask->realized_cents !== null ? Formato::reais($subtask->realized_cents) : '—' }}</td>
+                            <td>{{ $subtask->realizedLabel() }}</td>
                             <td>
                                 @if ($subtask->alert_enabled && $subtask->alert_percentage)
                                     {{ $subtask->alert_percentage }}%
@@ -136,7 +137,7 @@
                             </td>
                             <td class="cell-end">
                                 @unless ($subtask->timeLogs()->exists())
-                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" onsubmit="return confirm('Apagar esta tarefa?')">
+                                    <form method="POST" action="{{ route('subtarefas.destroy', $subtask) }}" data-confirmar="Apagar esta tarefa?">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-danger" type="submit">Apagar</button>
                                     </form>

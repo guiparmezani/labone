@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Project;
+use App\Models\Subtask;
+use App\Models\TimeLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -211,6 +214,50 @@ class UserManagementTest extends TestCase
         $pagina->assertSee('document.getElementById("editar-usuario-'.$operator->id.'")?.showModal();', false);
     }
 
+    public function test_lider_arquiva_operador_e_nao_arquiva_administrador(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $ana = User::factory()->operator()->create(['name' => 'Ana Arquivo']);
+        $admin = User::factory()->create(['role' => Role::Admin, 'name' => 'Admin Protegido']);
+
+        $this->get('/usuarios')
+            ->assertOk()
+            ->assertSee('Arquivar')
+            ->assertSee(route('usuarios.archive', $ana), false)
+            ->assertDontSee(route('usuarios.archive', $admin), false);
+
+        $this->post(route('usuarios.archive', $ana))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Usuário arquivado.');
+
+        $this->assertFalse($ana->refresh()->active);
+
+        $lista = $this->get('/usuarios')->assertOk()->assertSee('Usuários arquivados');
+        $html = (string) $lista->getContent();
+        $this->assertLessThan(strpos($html, 'Ana Arquivo'), strpos($html, 'Usuários arquivados'));
+        $lista->assertSee('Reativar')->assertSee(route('usuarios.reactivate', $ana), false);
+
+        $this->post(route('usuarios.reactivate', $ana))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Usuário reativado.');
+        $this->assertTrue($ana->refresh()->active);
+
+        $this->post(route('usuarios.archive', $admin))->assertForbidden();
+        $this->assertTrue($admin->refresh()->active);
+        $this->post(route('usuarios.reactivate', $admin))->assertForbidden();
+    }
+
+    public function test_nao_arquiva_o_unico_administrador_ativo(): void
+    {
+        $admin = $this->actingAsRole(Role::Admin);
+
+        $this->from('/usuarios')->post(route('usuarios.archive', $admin))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Precisa existir pelo menos um administrador ativo.');
+
+        $this->assertTrue($admin->refresh()->active);
+    }
+
     public function test_nao_remove_o_unico_administrador_ativo(): void
     {
         $admin = $this->actingAsRole(Role::Admin);
@@ -221,6 +268,52 @@ class UserManagementTest extends TestCase
             'role' => 'leader',
             'active' => '1',
         ])->assertInvalid(['role' => 'Precisa existir pelo menos um administrador ativo.']);
+    }
+
+    public function test_admin_apaga_usuario_ativo_ou_arquivado_e_lider_nao_apaga(): void
+    {
+        $admin = $this->actingAsRole(Role::Admin);
+        $ativo = User::factory()->operator()->create(['name' => 'Ativo Sem Ponto']);
+        $arquivado = User::factory()->operator()->create(['name' => 'Arquivado Sem Ponto', 'active' => false]);
+        $comPonto = User::factory()->operator()->create(['name' => 'Com Ponto']);
+        $projeto = Project::factory()->create(['created_by' => $ativo->id]);
+        $tarefa = Subtask::factory()->create(['project_id' => $projeto->id, 'created_by' => $ativo->id]);
+        TimeLog::factory()->create([
+            'user_id' => $comPonto->id,
+            'subtask_id' => $tarefa->id,
+            'created_by' => $comPonto->id,
+            'updated_by' => $comPonto->id,
+        ]);
+
+        $pagina = $this->get('/usuarios')->assertOk();
+        $pagina->assertSee('id="apagar-usuario-'.$ativo->id.'"', false);
+        $pagina->assertSee('id="apagar-usuario-'.$arquivado->id.'"', false);
+        $pagina->assertDontSee('id="apagar-usuario-'.$admin->id.'"', false);
+
+        $this->delete(route('usuarios.destroy', $comPonto))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Esta pessoa tem lançamentos. Arquive a conta em vez de apagar.');
+        $this->assertModelExists($comPonto);
+
+        $this->delete(route('usuarios.destroy', $ativo))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Usuário apagado.');
+        $this->assertModelMissing($ativo);
+        $this->assertSame($admin->id, $projeto->refresh()->created_by);
+        $this->assertSame($admin->id, $tarefa->refresh()->created_by);
+
+        $this->delete(route('usuarios.destroy', $arquivado))
+            ->assertRedirect('/usuarios')
+            ->assertSessionHas('status', 'Usuário apagado.');
+        $this->assertModelMissing($arquivado);
+
+        $this->delete(route('usuarios.destroy', $admin))->assertForbidden();
+        $this->assertModelExists($admin);
+
+        $this->actingAsRole(Role::Leader);
+        $this->get('/usuarios')->assertOk()->assertDontSee('apagar-usuario-', false);
+        $this->delete(route('usuarios.destroy', $comPonto))->assertForbidden();
+        $this->assertModelExists($comPonto);
     }
 
     public function test_conta_desativada_no_meio_da_sessao_sai(): void

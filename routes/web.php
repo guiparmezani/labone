@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClockController;
 use App\Http\Controllers\HomeController;
@@ -39,6 +40,8 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::post('/ponto/parar', [ClockController::class, 'stop'])->name('ponto.stop');
 
     Route::middleware('papel:admin,leader')->group(function () {
+        Route::get('/alertas', [AlertController::class, 'index'])->name('alertas.index');
+        Route::post('/alertas', [AlertController::class, 'carregar'])->name('alertas.carregar');
         Route::get('/lancamentos', [TimeLogController::class, 'index'])->name('lancamentos.index');
         Route::get('/lancamentos/{timeLog}/editar', [TimeLogController::class, 'edit'])->name('lancamentos.edit');
         Route::put('/lancamentos/{timeLog}', [TimeLogController::class, 'update'])->name('lancamentos.update');
@@ -52,12 +55,15 @@ Route::middleware(['auth', 'ativo'])->group(function () {
     Route::middleware('papel:admin')->group(function () {
         Route::get('/lancamentos/novo', [TimeLogController::class, 'create'])->name('lancamentos.create');
         Route::post('/lancamentos', [TimeLogController::class, 'store'])->name('lancamentos.store');
+        Route::delete('/usuarios/{user}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
     Route::get('/subtarefas/{subtask}/editar', [SubtaskController::class, 'edit'])->name('subtarefas.edit');
     Route::put('/subtarefas/{subtask}', [SubtaskController::class, 'update'])->name('subtarefas.update');
     Route::delete('/subtarefas/{subtask}', [SubtaskController::class, 'destroy'])->name('subtarefas.destroy');
 
     Route::middleware('papel:admin,leader')->group(function () {
+        Route::post('/usuarios/{user}/arquivar', [UserController::class, 'archive'])->name('usuarios.archive');
+        Route::post('/usuarios/{user}/reativar', [UserController::class, 'reactivate'])->name('usuarios.reactivate');
         Route::resource('usuarios', UserController::class)
             ->except(['show', 'destroy'])
             ->parameters(['usuarios' => 'user']);

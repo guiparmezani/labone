@@ -124,6 +124,9 @@ erDiagram
 | `password` | Hashed |
 | `role` | `admin`, `leader`, or `operator` |
 | `active` | Default true |
+| `hourly_rate_cents` | Optional valor hora, in cents. Blank stays empty. The current rate is used for every log, including ones already finished. |
+| `shift_start`, `shift_end` | Optional jornada, typed and stored as 24-hour `HH:MM` (`00:00` is midnight, `18:00` is 6 PM). Both empty, or both filled. Weekdays only. |
+| `shift_afternoon_start`, `shift_afternoon_end` | Optional second window, after the first one ends. Empty means the day is one span, so lunch sits inside it. |
 
 ### projects
 
@@ -139,7 +142,7 @@ erDiagram
 
 Closing keeps every subtask and every log. A closed project accepts no new subtasks and no new logs.
 
-Delete a project only when it has no time logs. Otherwise the only exit is close. Same rule for subtasks: delete only when that subtask has no logs.
+Deleting a project asks in the app popup, not the browser. The person must check **Apagar o projeto e todos os lançamentos** and then confirm. That removes the project, its tasks, and every time log on those tasks. A subtask can be deleted only when that subtask has no logs.
 
 ### subtasks
 
@@ -150,7 +153,7 @@ Delete a project only when it has no time logs. Otherwise the only exit is close
 | `kind` | `internal` or `third_party` |
 | `budget_cents` | Valor previsto, in cents. Required and ≥ 0 when `kind` is `third_party`. Optional for an internal subtask. |
 | `planned_minutes` | Tempo previsto for this subtask. Optional. Empty until someone fills it in. |
-| `realized_cents` | Valor realizado, typed in reais and stored as cents. Optional. Not computed from hours. |
+| `realized_cents` | Valor realizado typed in reais and stored as cents. Optional. This is the material (or any amount typed by hand). It stays. Labor is added beside it from the logs. |
 | `alert_percentage` | Optional integer 1–100. |
 | `alert_enabled` | Set from the percentage field. A filled percentage turns the alarm on. A blank field turns it off and clears the percentage. |
 | `is_revision` | Checkbox. When on, the subtask is rework, usually Labone's own clocked time caused by a third party. |
@@ -160,9 +163,9 @@ Delete a project only when it has no time logs. Otherwise the only exit is close
 
 An internal subtask is what people clock. A third-party subtask never receives a time log. Changing `kind` after logs exist is rejected. Changing a third-party subtask to internal is allowed only while it has no logs.
 
-Tempo realizado is the sum of finished logs on that subtask. Open timers do not count. Valor realizado is whatever the leader or admin types.
+Tempo realizado is the sum of finished logs on that subtask. Open timers do not count there. Valor realizado on the task is the typed amount plus labor. Labor is that task's minutes, including the open clock, times each person's current valor hora, rounded to cents. A person with no rate adds nothing. When both parts are above zero the screen shows them side by side, like `R$ 1.000,00 + R$ 1.000,00`. One part alone shows that amount. Neither shows "—". The project total is the sum of those task totals. Operators never see the rate or these amounts.
 
-An alert is reached only when `alert_enabled` is true, `planned_minutes` is greater than zero, and consumed minutes × 100 is at least `planned_minutes` × `alert_percentage`. Consumed minutes are finished logs plus the open clock on that same subtask. Reached alerts show on the admin and leader home, with the project name, the subtask name, and the percentage.
+An alert is reached only when `alert_enabled` is true, `planned_minutes` is greater than zero, and consumed minutes × 100 is at least `planned_minutes` × `alert_percentage`. Consumed minutes are finished logs plus the open clock on that same subtask. Reached alerts show on the admin and leader Alertas page, with the project name, the subtask name, and the percentage.
 
 Operators may create subtasks. The server forces `kind = internal` and leaves planned time, both money fields, and the alert empty on that path. The operator form has a name field and nothing else.
 
@@ -205,7 +208,8 @@ Enforce these on the server for every route, not only in the navigation. A forbi
 | Start or stop a timer for any active person | Yes | Yes | No |
 | Copy a project | Yes | Yes | No |
 | Create, edit, close, reopen projects | Yes | Yes | No |
-| Delete a project that has no logs | Yes | Yes | No |
+| Delete a project and its time logs, after the checkbox | Yes | Yes | No |
+| Delete a user account that has no time logs | Yes | No | No |
 | See budgets, planned hours, logged totals | Yes | Yes | No |
 | Create a third-party subtask | Yes | Yes | No |
 | Edit or delete a subtask | Yes | Yes | No |
@@ -265,9 +269,15 @@ A select of active user names, password, submit. Wrong password, an unknown pers
 
 ### Início
 
-Admin and leader see two columns. The left column is **Projetos em andamento**, then **Alertas atingidos**, then **Iniciar ponto**. The right column is **Pontos em andamento**. That person's own open clocks sit at the top of the page, stacked one under another. A shorter widget does not push the one beside it down. On a phone the columns stack. Operators do not get the alert list.
+Admin and leader see two columns. The left column is **Projetos em andamento**, then **Iniciar ponto**. The right column is **Pontos em andamento**. That person's own open clocks sit at the top of the page, stacked one under another. A shorter widget does not push the one beside it down. On a phone the columns stack.
 
-**Alertas atingidos** lists every subtask whose alarm is on and whose consumed hours (finished plus the open clock on that subtask) have reached that subtask's percentage. Each row shows project, subtask, percentage, and consumed hours against that subtask's planned hours. Empty state: "Nenhum alerta atingido."
+### Alertas
+
+Admin and leader. The nav item sits after Início. It shows `(N)` for unresolved jornada gaps and reached percentage alerts this person has not opened yet. A gap that already has a start time does not count. Opening Alertas marks the current set as read for that person only, and the number drops to nothing until a new one appears.
+
+**Jornada.** Weekdays in São Paulo, and only inside a person's shift. A single span (07:00–17:00) alerts through lunch. A second span (07:00–12:00 and 13:00–17:00) leaves the gap between them quiet. Someone with no shift produces no row. A row appears when 15 minutes pass with no clock in that window. "Desde" is the window start if they have not worked in it yet, or the end of their last log. Starting a clock adds "Iniciou às HH:MM" on that same row. A later gap of 15 minutes is a new row. On open, the page shows only the current São Paulo day, including a window that ended with nobody starting. Rows are grouped under the date `dd/mm/yyyy`, newest day first, and inside each day the latest time is first. **Carregar dias anteriores** adds the next five earlier days that have rows, then five more on each click, and hides when the 30-day window is fully shown. A refresh shows only the current day again. Days before that person's account existed are left out. Opening the page marks every current alert as read for that person, including jornada days that are not on screen yet, and the nav count drops to nothing until a new one appears. Empty state: "Ninguém parado na jornada."
+
+**Alertas atingidos** lists every subtask whose alarm is on and whose consumed hours (finished plus the open clock on that subtask) have reached that subtask's percentage. Each row shows project, subtask, percentage, and consumed hours against that subtask's planned hours. Empty state: "Nenhum alerta atingido." Operators get 403.
 
 **Projetos em andamento.** Open projects only.
 
@@ -296,7 +306,7 @@ Create and edit form:
 - Horas previstas, decimal hours typed with a comma or a dot (`1,5` and `1.5` both mean 90 minutes), stored as minutes, rounded to the nearest minute. On edit, only an admin can change this number. A leader still sets it when creating the project.
 - Salvar
 
-Actions on a row: edit, close, reopen, and delete when there are no logs.
+Actions on a row: edit, close, reopen, and delete. Delete confirms in the app popup. A project delete also requires the checkbox that removes its time logs. A task delete is offered only when that task has no logs.
 
 Operators have no project list route. They reach open projects from Início.
 
@@ -316,11 +326,11 @@ Operator project screen, reached from Início: project name as a heading, then i
 
 ### Lançamentos
 
-Admin and leader. Filter by project, user, and a date range on `started_at`. Default range is the current month in São Paulo.
+Admin and leader. Filter by project, user, month, and a date range on `started_at`. Default is the current month in São Paulo, and the heading names it, like **Outubro de 2026**. Choosing another month jumps to that month. A custom De/Até range changes the heading to **Período selecionado**.
 
 Columns: operator, project, task, start, duration as `Hh MMmin`. The end is not shown. It is the start plus the duration.
 
-**Novo lançamento** is admin only and stays on its own page. Admin and leader open an existing row in a lightbox on this page: person, task, start, and duration as decimal hours. A validation error reopens that same lightbox. **Apagar** stays on the row, asks for a confirm, and is available to admin and leader.
+**Novo lançamento** is admin only and stays on its own page. Admin and leader open an existing row in a lightbox on this page: person, task, start, and duration as decimal hours. A validation error reopens that same lightbox. **Apagar** stays on the row, asks in the app popup, and is available to admin and leader.
 
 Open logs appear in this list with duration shown as "Em andamento".
 
@@ -346,11 +356,11 @@ A project row opens that project's printable sheet: equipe interna, equipe terce
 
 CSV is UTF-8 with BOM, field separator `;`, so Excel in Portuguese opens it in columns. Hours as decimal with a comma, two places (`1,50`). Money as decimal with a comma, two places, no currency symbol.
 
-Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money typed on the subtasks. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** and **Imprimir** sit at the bottom of the sheet. Export downloads `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine. Print is the browser print of the same sheet.
+Each project also has a sheet at `/projetos/{id}/relatorio`. The footer shows planned hours (project plus subtasks), realized hours including open clocks, planned money (project plus subtasks), and realized money: what was typed on the tasks plus labor from the valor hora. Revision subtasks are left out of the two team tables and listed only under Revisões. Each third-party row still shows how many revisions point at it. **Exportar** and **Imprimir** sit at the bottom of the sheet. Export downloads `{project name}.csv`: UTF-8 with BOM, separator `;`, hours and money as decimals with a comma. There is no PDF engine. Print is the browser print of the same sheet.
 
 ### Usuários
 
-Admin and leader. Name, optional email, role, active, password on create, optional new password on edit. Turning **Ativa** off is how an account is removed. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. **Novo usuário** opens a lightbox on this page. Clicking a row opens that person’s edit form in a lightbox when the signed-in user is allowed to change them. A validation error reopens that same lightbox. Only an admin can create an administrator or open an administrator’s edit form.
+Admin and leader. Name, optional email, role, active, optional valor hora, password on create, optional new password on edit. With no jornada, the form shows **Jornada** and, under it on the left, **Adicionar jornada**. Each click reveals one pair of times, up to two, labeled **Jornada 1** and **Jornada 2**. A saved jornada is already open. **Remover** clears that pair. **Arquivar**, in the edit lightbox, turns the account off and closes any open clock. The person leaves the login list and moves to **Usuários arquivados** under the main list. Hours already logged stay on the tasks. Opening an archived person shows **Reativar**, which brings the account back. Next to **Arquivar** or **Reativar**, an administrator sees a red **Apagar** link. It asks in the app popup, then removes the account. Projects and tasks that person created stay, and the administrator who confirmed becomes their author. A person who already has time logs is not deleted: the hours stay, and the message says to archive instead. An administrator cannot delete their own account, and the last active administrator stays. A leader does not see **Apagar**. The edit lightbox has no **Conta ativa** checkbox. A leader can archive or reactivate a leader or an operator. Only an admin can archive or reactivate an administrator, and the last active administrator stays. A leader can set the rate and the shift. Without them, the person keeps today's behavior: no idle alert and no labor cost. Role labels: Administrador, Líder, Operador. A leader can assign Líder or Operador. **Novo usuário** opens a lightbox on this page. Clicking a row opens that person’s edit form in a lightbox when the signed-in user is allowed to change them. A validation error reopens that same lightbox. Only an admin can create an administrator or open an administrator’s edit form.
 
 ## 9. Validation copy
 
@@ -365,7 +375,9 @@ Return the message in Portuguese next to the field.
 | Duration would end in the future | A duração não pode passar do momento atual. |
 | Duration is not a number of hours | Informe a duração em horas, como 1,5. |
 | Revision linked to the wrong row | A revisão precisa apontar para uma equipe terceira deste projeto. |
-| Delete project or subtask that has logs | Este item tem lançamentos. Encerre o projeto em vez de apagar. |
+| Delete a subtask that has logs | Este item tem lançamentos. Encerre o projeto em vez de apagar. |
+| Delete a project without the checkbox | Marque a confirmação para apagar o projeto e os lançamentos. |
+| Delete a user who has time logs | Esta pessoa tem lançamentos. Arquive a conta em vez de apagar. |
 | Operator hits a leader URL | 403 page: Você não tem acesso a esta página. |
 
 ## 10. Formatting

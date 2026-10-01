@@ -111,8 +111,14 @@ class ProjectTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasErrors('project');
         $this->assertModelExists($busy);
+        $this->assertNotNull($subtask->timeLogs()->first());
 
-        $this->delete('/projetos/'.$empty->id)->assertRedirect('/projetos');
+        $this->delete('/projetos/'.$busy->id, ['apagar_lancamentos' => '1'])
+            ->assertRedirect('/projetos');
+        $this->assertModelMissing($busy);
+        $this->assertSame(0, TimeLog::query()->where('subtask_id', $subtask->id)->count());
+
+        $this->delete('/projetos/'.$empty->id, ['apagar_lancamentos' => '1'])->assertRedirect('/projetos');
         $this->assertModelMissing($empty);
     }
 

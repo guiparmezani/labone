@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Role;
+use App\Http\Requests\Concerns\ValidatesUserShift;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
+    use ValidatesUserShift;
+
     public function authorize(): bool
     {
         $actor = $this->user();
@@ -26,6 +29,7 @@ class UpdateUserRequest extends FormRequest
             'name' => trim((string) $this->input('name')),
             'email' => $email === '' ? null : $email,
         ]);
+        $this->mergeShift();
     }
 
     /**
@@ -44,7 +48,8 @@ class UpdateUserRequest extends FormRequest
                 fn (Role $role) => $role->value,
                 $this->user()->assignableRoles(),
             ))],
-            'active' => ['required', 'boolean'],
+            'active' => ['sometimes', 'boolean'],
+            ...$this->shiftRules(),
         ];
     }
 
@@ -74,6 +79,7 @@ class UpdateUserRequest extends FormRequest
             'role.in' => $this->user()?->isAdmin()
                 ? 'Escolha o papel.'
                 : 'Você não pode definir o papel de administrador.',
+            ...$this->shiftMessages(),
         ];
     }
 }

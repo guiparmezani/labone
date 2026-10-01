@@ -82,8 +82,19 @@ class TimeLog extends Model
     }
 
     /**
-     * Minutos lançados mais o que ainda está correndo na subtarefa.
+     * Centavos de mão de obra nesta subtarefa: minutos (incluindo o ponto aberto) × valor hora.
      */
+    public static function laborCentsSql(string $subtaskColumn = 'subtasks.id'): string
+    {
+        $minutes = 'case when tl.ended_at is null then '.self::openDurationSql('tl').' else '.self::durationSql('tl').' end';
+        $cast = match (DB::connection()->getDriverName()) {
+            'mysql' => 'cast(round(('.$minutes.') * u.hourly_rate_cents / 60.0) as signed)',
+            default => 'cast(round(('.$minutes.') * u.hourly_rate_cents / 60.0) as integer)',
+        };
+
+        return '(select coalesce(sum('.$cast.'), 0) from time_logs tl inner join users u on u.id = tl.user_id where tl.subtask_id = '.$subtaskColumn.' and u.hourly_rate_cents is not null and ('.$minutes.') > 0)';
+    }
+
     public static function consumedMinutesSql(string $subtaskColumn = 'subtasks.id'): string
     {
         $finished = self::durationSql('tl');

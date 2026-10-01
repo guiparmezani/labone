@@ -8,6 +8,7 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Models\Subtask;
+use App\Models\TimeLog;
 use App\Services\ProjectCsvImport;
 use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
@@ -120,7 +121,7 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
-        $project->load(['subtasks' => fn ($query) => $query->withLoggedMinutes()->with('revisionOf')->orderBy('name')]);
+        $project->load(['subtasks' => fn ($query) => $query->withLoggedMinutes()->withLaborCents()->with('revisionOf')->orderBy('name')]);
 
         return view('projects.show', [
             'project' => $project,
@@ -152,7 +153,7 @@ class ProjectController extends Controller
                     $this->horasCsv($subtask->planned_minutes),
                     Formato::horasCsv($subtask->consumedMinutes()),
                     $this->dinheiroCsv($subtask->budget_cents),
-                    $this->dinheiroCsv($subtask->realized_cents),
+                    $this->realizadoCsv($subtask),
                     '',
                     (string) ($subtask->revision_notes ?? ''),
                 ], ';');
@@ -166,7 +167,7 @@ class ProjectController extends Controller
                     $this->horasCsv($subtask->planned_minutes),
                     '',
                     $this->dinheiroCsv($subtask->budget_cents),
-                    $this->dinheiroCsv($subtask->realized_cents),
+                    $this->realizadoCsv($subtask),
                     (string) $sheet['revisions']->where('revision_of_subtask_id', $subtask->id)->count(),
                     (string) ($subtask->revision_notes ?? ''),
                 ], ';');
@@ -180,19 +181,19 @@ class ProjectController extends Controller
                     $this->horasCsv($revision->planned_minutes),
                     Formato::horasCsv($revision->consumedMinutes()),
                     $this->dinheiroCsv($revision->budget_cents),
-                    $this->dinheiroCsv($revision->realized_cents),
+                    $this->realizadoCsv($revision),
                     '',
                     (string) ($revision->revision_notes ?? ''),
                 ], ';');
             }
 
             $previstoSubtarefas = (int) $project->subtasks->sum('budget_cents');
-            $realizado = (int) $project->subtasks->sum('realized_cents');
+            $realizado = (int) $project->subtasks->sum(fn (Subtask $subtask) => $subtask->realizedTotalCents());
 
             fputcsv($out, ['Totais', 'Horas previstas', Formato::horasCsv($project->planned_minutes).' do projeto + '.Formato::horasCsv($project->plannedMinutesFromSubtasks()).' das tarefas', Formato::horasCsv($project->plannedMinutesTotal()), '', '', '', '', ''], ';');
             fputcsv($out, ['Totais', 'Horas realizadas', 'Inclui o ponto em andamento', '', Formato::horasCsv($project->consumedMinutes()), '', '', '', ''], ';');
             fputcsv($out, ['Totais', 'Valor previsto', Formato::decimal($project->budget_cents).' do projeto + '.Formato::decimal($previstoSubtarefas).' das tarefas', '', '', Formato::decimal($project->budget_cents + $previstoSubtarefas), '', '', ''], ';');
-            fputcsv($out, ['Totais', 'Valor realizado', 'Soma do que foi digitado nas tarefas', '', '', '', Formato::decimal($realizado), '', ''], ';');
+            fputcsv($out, ['Totais', 'Valor realizado', 'Digitado nas tarefas + horas pelo valor hora', '', '', '', Formato::decimal($realizado), '', ''], ';');
         });
     }
 
@@ -205,6 +206,7 @@ class ProjectController extends Controller
 
         $project->load(['subtasks' => function ($query) use ($consumed) {
             $query->withLoggedMinutes()
+                ->withLaborCents()
                 ->addSelect(DB::raw($consumed.' as consumed_minutes'))
                 ->with('revisionOf')
                 ->orderBy('name');
@@ -224,6 +226,28 @@ class ProjectController extends Controller
     private function horasCsv(?int $minutes): string
     {
         return $minutes === null ? '' : Formato::horasCsv($minutes);
+    }
+
+    private function realizadoCsv(Subtask $subtask): string
+    {
+        $material = $subtask->realized_cents;
+        $mao = $subtask->laborCents();
+        $temMaterial = $material !== null && $material > 0;
+        $temMao = $mao > 0;
+
+        if ($temMaterial && $temMao) {
+            return Formato::decimal($material).' + '.Formato::decimal($mao);
+        }
+
+        if ($temMaterial) {
+            return Formato::decimal($material);
+        }
+
+        if ($temMao) {
+            return Formato::decimal($mao);
+        }
+
+        return '';
     }
 
     private function dinheiroCsv(?int $cents): string
@@ -357,17 +381,22 @@ class ProjectController extends Controller
         return redirect()->route('projetos.show', $copy)->with('status', 'Projeto copiado.');
     }
 
-    public function destroy(Project $project): RedirectResponse
+    public function destroy(Request $request, Project $project): RedirectResponse
     {
         $this->authorize('delete', $project);
 
-        if ($project->timeLogs()->exists()) {
+        if (! $request->boolean('apagar_lancamentos')) {
             return back()->withErrors([
-                'project' => 'Este item tem lançamentos. Encerre o projeto em vez de apagar.',
+                'project' => 'Marque a confirmação para apagar o projeto e os lançamentos.',
             ]);
         }
 
-        $project->delete();
+        DB::transaction(function () use ($project): void {
+            TimeLog::query()
+                ->whereIn('subtask_id', $project->subtasks()->select('subtasks.id'))
+                ->delete();
+            $project->delete();
+        });
 
         return redirect()->route('projetos.index')->with('status', 'Projeto apagado.');
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SubtaskKind;
+use App\Support\Formato;
 use Database\Factories\SubtaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -92,6 +93,54 @@ class Subtask extends Model
                 ->whereColumn('time_logs.subtask_id', 'subtasks.id')
                 ->whereNotNull('time_logs.ended_at'),
         ]);
+    }
+
+    /**
+     * @param  Builder<Subtask>  $query
+     * @return Builder<Subtask>
+     */
+    public function scopeWithLaborCents(Builder $query): Builder
+    {
+        return $query->addSelect(DB::raw(TimeLog::laborCentsSql().' as labor_cents'));
+    }
+
+    public function laborCents(): int
+    {
+        if (array_key_exists('labor_cents', $this->attributes)) {
+            return (int) $this->attributes['labor_cents'];
+        }
+
+        return (int) DB::scalar('select '.TimeLog::laborCentsSql((string) (int) $this->id));
+    }
+
+    public function realizedTotalCents(): int
+    {
+        return (int) ($this->realized_cents ?? 0) + $this->laborCents();
+    }
+
+    /**
+     * Material digitado, mão de obra, ou os dois lado a lado.
+     */
+    public function realizedLabel(): string
+    {
+        $material = $this->realized_cents;
+        $mao = $this->laborCents();
+        $temMaterial = $material !== null && $material > 0;
+        $temMao = $mao > 0;
+
+        if ($temMaterial && $temMao) {
+            return Formato::reais($material).' + '.Formato::reais($mao);
+        }
+
+        if ($temMaterial) {
+            return Formato::reais($material);
+        }
+
+        if ($temMao) {
+            return Formato::reais($mao);
+        }
+
+        return '—';
     }
 
     public function loggedMinutes(): int

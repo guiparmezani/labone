@@ -28,6 +28,7 @@
 @endphp
 
 <dialog class="lightbox lightbox-form" id="{{ $id }}">
+    @include('partials.lightbox-fechar')
     <form method="POST" action="{{ $action }}" class="stack">
         @csrf
         @if ($metodo !== 'POST')
@@ -41,7 +42,7 @@
         <div class="lightbox-intro">
             <h2>{{ $titulo }}</h2>
             @unless ($criando)
-                <p class="muted">Tempo realizado: {{ Formato::minutos($subtask->loggedMinutes()) }} já parados, {{ Formato::minutos($subtask->consumedMinutes()) }} com o ponto aberto. O valor realizado é digitado, não calculado.</p>
+                <p class="muted">Tempo realizado: {{ Formato::minutos($subtask->loggedMinutes()) }} já parados, {{ Formato::minutos($subtask->consumedMinutes()) }} com o ponto aberto. O valor digitado fica. As horas de quem tem valor hora entram ao lado, inclusive o ponto aberto.</p>
             @endunless
         </div>
 
@@ -136,7 +137,6 @@
 
         <div class="actions">
             <button class="btn btn-primary" type="submit">Salvar</button>
-            <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
         </div>
     </form>
 </dialog>

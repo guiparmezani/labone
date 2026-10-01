@@ -52,7 +52,6 @@ class HomeController extends Controller
                 ->with('project')
                 ->orderBy('name')
                 ->get(),
-            'reachedAlerts' => Subtask::query()->reached()->with('project')->get(),
         ];
 
         return view('home.manager', $data);

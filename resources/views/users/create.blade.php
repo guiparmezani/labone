@@ -12,4 +12,5 @@
             </div>
         </form>
     </section>
+    @include('users._jornada')
 @endsection

@@ -58,6 +58,11 @@ class ProjectAlertTest extends TestCase
 
         $this->get(route('inicio'))
             ->assertOk()
+            ->assertDontSee('Alertas atingidos')
+            ->assertDontSee('Molde alerta — Usinagem · 80%');
+
+        $this->get(route('alertas.index'))
+            ->assertOk()
             ->assertSee('Alertas atingidos')
             ->assertSee('Molde alerta — Usinagem · 80%')
             ->assertDontSee('Acabamento · 80%');
@@ -101,6 +106,10 @@ class ProjectAlertTest extends TestCase
 
         $this->get(route('inicio'))
             ->assertOk()
+            ->assertDontSee('Molde — So aberto · 1%');
+
+        $this->get(route('alertas.index'))
+            ->assertOk()
             ->assertSee('Molde — So aberto · 1%')
             ->assertDontSee('Desligado ·')
             ->assertDontSee('Sem meta ·');
@@ -114,6 +123,11 @@ class ProjectAlertTest extends TestCase
 
         $this->actingAs($leader)
             ->get(route('inicio'))
+            ->assertOk()
+            ->assertDontSee('Alertas atingidos');
+
+        $this->actingAs($leader)
+            ->get(route('alertas.index'))
             ->assertOk()
             ->assertSee('Alertas atingidos');
 
@@ -137,7 +151,12 @@ class ProjectAlertTest extends TestCase
 
         $this->actingAs($operator)
             ->get(route('inicio'))
-            ->assertDontSee('Alertas atingidos');
+            ->assertDontSee('Alertas atingidos')
+            ->assertDontSee('Valor hora');
+
+        $this->actingAs($operator)
+            ->get(route('alertas.index'))
+            ->assertForbidden();
     }
 
     public function test_alarme_em_branco_fica_desligado(): void

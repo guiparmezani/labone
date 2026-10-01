@@ -7,7 +7,7 @@
 @section('content')
     <section class="panel">
         <h1>Editar tarefa</h1>
-        <p class="muted">Tempo realizado: {{ Formato::minutos($subtask->loggedMinutes()) }} já parados, {{ Formato::minutos($subtask->consumedMinutes()) }} com o ponto aberto. O valor realizado é digitado, não calculado.</p>
+        <p class="muted">Tempo realizado: {{ Formato::minutos($subtask->loggedMinutes()) }} já parados, {{ Formato::minutos($subtask->consumedMinutes()) }} com o ponto aberto. O valor digitado fica. As horas de quem tem valor hora entram ao lado, inclusive o ponto aberto.</p>
         <form method="POST" action="{{ route('subtarefas.update', $subtask) }}" class="stack">
             @csrf
             @method('PUT')

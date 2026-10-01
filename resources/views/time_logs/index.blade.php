@@ -28,6 +28,16 @@
             </select>
         </label>
         <label class="field">
+            <span>Mês</span>
+            <select name="mes">
+                <option value="" @selected($filters['mes'] === '')>Personalizado</option>
+                @foreach ($meses as $opcao)
+                    @php($nomeMes = $opcao->copy()->locale('pt_BR')->translatedFormat('F'))
+                    <option value="{{ $opcao->format('Y-m') }}" @selected($filters['mes'] === $opcao->format('Y-m'))>{{ mb_strtoupper(mb_substr($nomeMes, 0, 1)).mb_substr($nomeMes, 1) }} de {{ $opcao->year }}</option>
+                @endforeach
+            </select>
+        </label>
+        <label class="field">
             <span>De</span>
             @include('partials.calendario', ['nome' => 'from', 'valor' => $filters['from']])
         </label>
@@ -37,6 +47,8 @@
         </label>
         <button class="btn btn-ghost" type="submit">Filtrar</button>
     </form>
+
+    <h2>{{ $periodo }}</h2>
 
     <div class="table-wrap">
         <table>
@@ -61,7 +73,7 @@
                         <td>{{ $log->minutes() === null ? 'Em andamento' : \App\Support\Formato::minutos($log->minutes()) }}</td>
                         <td class="cell-end">
                             @can('delete', $log)
-                                <form method="POST" action="{{ route('lancamentos.destroy', $log) }}" style="display:inline" onsubmit="return confirm('Apagar este lançamento?')">
+                                <form method="POST" action="{{ route('lancamentos.destroy', $log) }}" data-confirmar="Apagar este lançamento?">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-danger" type="submit">Apagar</button>
                                 </form>
@@ -78,6 +90,7 @@
     @foreach ($logs as $log)
         @continue(! auth()->user()->can('update', $log))
         <dialog class="lightbox lightbox-form lightbox-calendario" id="editar-lancamento-{{ $log->id }}">
+            @include('partials.lightbox-fechar')
             <form method="POST" action="{{ route('lancamentos.update', $log) }}" class="stack">
                 @csrf
                 @method('PUT')
@@ -86,7 +99,6 @@
                 @include('time_logs._form', ['log' => $log, 'lightbox' => 'editar-lancamento-'.$log->id])
                 <div class="actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>
-                    <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
                 </div>
             </form>
         </dialog>
@@ -156,6 +168,28 @@
                         dialog.close();
                     });
                 });
+            });
+        })();
+
+        (function () {
+            var form = document.querySelector('.filter-bar');
+            var mes = form?.querySelector('[name="mes"]');
+
+            if (!form || !mes) {
+                return;
+            }
+
+            mes.addEventListener('change', function () {
+                if (!/^\d{4}-\d{2}$/.test(mes.value)) {
+                    return;
+                }
+
+                var partes = mes.value.split('-');
+                var ultimo = new Date(Number(partes[0]), Number(partes[1]), 0).getDate();
+                var caixas = form.querySelectorAll('.calendario-texto');
+                caixas[0].value = '01/' + partes[1] + '/' + partes[0];
+                caixas[1].value = String(ultimo).padStart(2, '0') + '/' + partes[1] + '/' + partes[0];
+                form.requestSubmit();
             });
         })();
     </script>

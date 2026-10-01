@@ -189,6 +189,38 @@ class TimeLogTest extends TestCase
         $this->get('/lancamentos')->assertOk()->assertSee('Em andamento')->assertSee('Joana Torno');
     }
 
+    public function test_abre_no_mes_atual_e_o_periodo_customizado_muda_o_titulo(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $operator = User::factory()->create(['name' => 'Pedro Setembro']);
+        $subtask = Subtask::factory()->create();
+        TimeLog::factory()->create([
+            'user_id' => $operator->id,
+            'subtask_id' => $subtask->id,
+            'created_by' => $operator->id,
+            'updated_by' => $operator->id,
+            'started_at' => Carbon::parse('2026-09-15 10:00:00', Formato::TZ)->utc(),
+            'ended_at' => Carbon::parse('2026-09-15 12:00:00', Formato::TZ)->utc(),
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-10-01 09:00:00', Formato::TZ));
+
+        $this->get('/lancamentos')
+            ->assertOk()
+            ->assertSee('Outubro de 2026')
+            ->assertDontSee('15/09/2026');
+
+        $this->get('/lancamentos?mes=2026-09')
+            ->assertOk()
+            ->assertSee('Setembro de 2026')
+            ->assertSee('15/09/2026');
+
+        $this->get('/lancamentos?from=2026-09-10&to=2026-09-20')
+            ->assertOk()
+            ->assertSee('Período selecionado')
+            ->assertSee('15/09/2026');
+    }
+
     public function test_calendario_de_lancamento_e_em_portugues(): void
     {
         $this->actingAsRole(Role::Admin);

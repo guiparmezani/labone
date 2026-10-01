@@ -49,6 +49,7 @@
     </div>
 
     <dialog class="lightbox lightbox-form" id="novo-projeto">
+        @include('partials.lightbox-fechar')
         <form method="POST" action="{{ route('projetos.store') }}" class="stack">
             @csrf
             <input type="hidden" name="lightbox" value="novo-projeto">
@@ -56,12 +57,12 @@
             @include('projects._form', ['project' => new \App\Models\Project(), 'lightbox' => 'novo-projeto'])
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar</button>
-                <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
             </div>
         </form>
     </dialog>
 
     <dialog class="lightbox lightbox-form" id="importar-projeto">
+        @include('partials.lightbox-fechar')
         <form method="POST" action="{{ route('projetos.importar') }}" enctype="multipart/form-data" class="stack">
             @csrf
             <input type="hidden" name="lightbox" value="importar-projeto">
@@ -78,7 +79,6 @@
             @enderror
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Importar</button>
-                <button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
             </div>
         </form>
     </dialog>
