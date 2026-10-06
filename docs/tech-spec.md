@@ -433,6 +433,7 @@ Operator `GET /projetos` redirects to `/`.
 - Policies: `UserPolicy`, `ProjectPolicy`, `SubtaskPolicy`, `TimeLogPolicy`. Reports use a gate `viewReports` that is true only for admin.
 - Mass assignment cannot set `role`, `budget_cents`, `kind`, or `source` from an operator request.
 - Errors in production hide stack traces.
+- Client and staging responses carry `X-Robots-Tag: noindex, nofollow`, including static files and application errors. Apache applies it through `public/.htaccess`; the staging Caddy route also sets it. Crawling stays allowed in `robots.txt` so crawlers can see the indexing restriction.
 - `.env` stays off the server git checkout and out of the repo.
 
 ## 13. Deploy
@@ -453,6 +454,8 @@ Produção, no servidor do cliente, segue o mesmo desenho:
 - Sessão e cache em banco
 - `mysqldump` diário, retenção de 7 dias na mesma máquina
 - Publicação: `git pull`, `composer install --no-dev`, `php artisan migrate --force`, cache de config e views
+
+Implantação do cliente em 05/10/2026: Hostgator `br608.hostgator.com.br`, domínio `ponto.laboneindustrial.com.br`, app em `/home2/labone44/ponto` e document root em `public/`. PHP 8.4.26 e MySQL 5.7.44-48 foram verificados; todas as migrações rodaram nessa versão de MySQL. Sem SSH: upload pelo gerenciador do cPanel e inicialização por cron temporário privado. HTTPS com certificado wildcard existente. Backup diário às 03:00 no horário do servidor, sete dias de retenção, fora do document root. Os dados do staging foram copiados com as senhas preservadas; as duas contas que ainda usam a senha demo precisam de troca antes da entrega ao cliente. Detalhes de atualização e recuperação no README.
 
 Entregar ao cliente uma nota curta em português: como entrar, o que cada papel faz, e que o administrador redefine senhas. A senha inicial do administrador vai por um canal fora do git.
 

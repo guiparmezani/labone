@@ -1,6 +1,8 @@
 # Guia do piloto
 
-O sistema se chama **Controle de projetos**. Nesta máquina ele abre em [http://labone.localhost](http://labone.localhost).
+O sistema se chama **Controle de projetos**. Na hospedagem do cliente ele abre em [https://ponto.laboneindustrial.com.br](https://ponto.laboneindustrial.com.br). Nesta máquina, o endereço local é [http://labone.localhost](http://labone.localhost).
+
+A produção recebeu uma cópia dos usuários e projetos do staging em 05/10/2026. Os nomes e senhas são os mesmos do staging; novas alterações ficam independentes em cada instalação. As contas Administrador e Joana Operadora ainda usam a senha de demonstração: o administrador deve trocar essas senhas em Usuários antes de liberar o acesso ao cliente.
 
 A senha inicial de todos os usuários de demonstração é `senha-segura`. Troque essas senhas antes de entregar o endereço ao cliente. Quem redefine senha é o administrador, em Usuários.
 
