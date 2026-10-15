@@ -18,6 +18,8 @@ class ShiftWatch
 
     public const DIAS = 30;
 
+    public const POR_PAGINA = 5;
+
     /** @var array<string, Collection<int, ShiftGap>> */
     private array $cache = [];
 
@@ -69,7 +71,7 @@ class ShiftWatch
 
                     foreach ($this->janelas($pessoa, $dia) as [$inicio, $fim]) {
                         foreach ($this->buracos($inicio, $fim, $instante, $logs->get($pessoa->id, collect())) as [$desde, $iniciou]) {
-                            $linhas->push(new ShiftGap($pessoa, $desde, $iniciou));
+                            $linhas->push(new ShiftGap($pessoa, $desde, $iniciou, $fim));
                         }
                     }
                 }
@@ -84,28 +86,18 @@ class ShiftWatch
     /**
      * @return array{gaps: Collection<int, ShiftGap>, podeCarregar: bool}
      */
-    public function page(int $diasAnteriores = 0, ?Carbon $agora = null): array
+    public function page(int $adicionais = 0, ?Carbon $agora = null): array
     {
         $agora = ($agora ?? now())->timezone(Formato::TZ);
-        $diasAnteriores = max(0, $diasAnteriores);
-        $todos = $this->gaps($agora);
-        $hoje = $agora->toDateString();
-
-        $deHoje = $todos->filter(fn (ShiftGap $gap) => $gap->since->toDateString() === $hoje);
-        $chavesAntigas = $todos
-            ->reject(fn (ShiftGap $gap) => $gap->since->toDateString() === $hoje)
-            ->map(fn (ShiftGap $gap) => $gap->since->toDateString())
-            ->unique()
-            ->sort()
-            ->reverse()
+        $todos = $this->gaps($agora)
+            ->sortByDesc(fn (ShiftGap $gap) => $gap->since->getTimestamp())
             ->values();
-
-        $mostrar = $chavesAntigas->take($diasAnteriores);
-        $antigos = $todos->filter(fn (ShiftGap $gap) => $mostrar->contains($gap->since->toDateString()));
+        $deHoje = $todos->filter(fn (ShiftGap $gap) => $gap->since->isSameDay($agora))->count();
+        $limite = max(self::POR_PAGINA, $deHoje) + max(0, min($todos->count(), $adicionais));
 
         return [
-            'gaps' => $deHoje->concat($antigos)->values(),
-            'podeCarregar' => $chavesAntigas->count() > $diasAnteriores,
+            'gaps' => $todos->take($limite)->values(),
+            'podeCarregar' => $todos->count() > $limite,
         ];
     }
 

@@ -185,6 +185,7 @@ Database constraints:
 
 - A person may have several open logs, one per subtask. A second open log on the same subtask for the same person is refused.
 - Overlapping intervals for the same person are allowed, because two tasks can run at once.
+- `started_at` has an explicit timestamp default and no `ON UPDATE` rule. Stopping a timer or updating its metadata must preserve its original start. Existing MySQL installations receive the October 9 schema migration; the migration does not infer or rewrite historical hours.
 
 There is no overlap check on create or update.
 
@@ -275,7 +276,9 @@ Admin and leader see two columns. The left column is **Projetos em andamento**, 
 
 Admin and leader. The nav item sits after Início. It shows `(N)` for unresolved jornada gaps and reached percentage alerts this person has not opened yet. A gap that already has a start time does not count. Opening Alertas marks the current set as read for that person only, and the number drops to nothing until a new one appears.
 
-**Jornada.** Weekdays in São Paulo, and only inside a person's shift. A single span (07:00–17:00) alerts through lunch. A second span (07:00–12:00 and 13:00–17:00) leaves the gap between them quiet. Someone with no shift produces no row. A row appears when 15 minutes pass with no clock in that window. "Desde" is the window start if they have not worked in it yet, or the end of their last log. Starting a clock adds "Iniciou às HH:MM" on that same row. A later gap of 15 minutes is a new row. On open, the page shows only the current São Paulo day, including a window that ended with nobody starting. Rows are grouped under the date `dd/mm/yyyy`, newest day first, and inside each day the latest time is first. **Carregar dias anteriores** adds the next five earlier days that have rows, then five more on each click, and hides when the 30-day window is fully shown. A refresh shows only the current day again. Days before that person's account existed are left out. Opening the page marks every current alert as read for that person, including jornada days that are not on screen yet, and the nav count drops to nothing until a new one appears. Empty state: "Ninguém parado na jornada."
+**Jornada.** Weekdays in São Paulo, and only inside a person's shift. A single span (07:00–17:00) alerts through lunch. A second span (07:00–12:00 and 13:00–17:00) leaves the gap between them quiet. Someone with no shift produces no row. A row appears when 15 minutes pass with no clock in that window. Each entry has generous spacing and a short sentence: "{name} está {duration} sem iniciar uma tarefa" while idle, or "{name} ficou {duration} sem iniciar uma tarefa" after the person starts a clock or the shift window ends. Name and duration are bold. Duration counts from the start of the idle period, including the initial 15 minutes, and freezes at the clock start or shift end; it never includes lunch between two windows or later days. A smaller "Desde HH:MM" keeps the original idle start visible. The clock's eventual start time is not appended. A later gap of 15 minutes is a new entry.
+
+On open, show every alert from the current São Paulo day and fill from earlier days until at least five entries are visible, or show all available entries when fewer than five exist within the 30-day history. This also applies before today's first alert and on weekends. Group under `dd/mm/yyyy`, newest date first, and sort within each day by when the idle period began, newest first. **Carregar mais** adds five entries per click and hides when all history is visible. A refresh returns to the initial list. Days before that person's account existed are left out. Opening the page still marks every current alert as read for that person, including entries not on screen yet. Empty state: "Nenhum alerta de jornada nos últimos 30 dias."
 
 **Alertas atingidos** lists every subtask whose alarm is on and whose consumed hours (finished plus the open clock on that subtask) have reached that subtask's percentage. Each row shows project, subtask, percentage, and consumed hours against that subtask's planned hours. Empty state: "Nenhum alerta atingido." Operators get 403.
 
@@ -475,6 +478,7 @@ Feature tests, hitting the real routes:
 10. Project and subtask delete fails when a log exists, and succeeds when none exist.
 11. Admin CSV is semicolon-separated, starts with a BOM, and omits open logs.
 12. A log started at 23:30 São Paulo falls on that local date, not the UTC date.
+13. On MySQL with `explicit_defaults_for_timestamp=OFF`, a 15-minute timer preserves its original start and produces 15 minutes in both the entry and report, including after a metadata update. Check both a fresh schema and an existing schema repaired by the migration. Use the dedicated disposable database required by `MySqlTimeLogSchemaTest`; SQLite cannot prove this behavior.
 
 Then a manual pass on a phone-width browser and on a desktop browser, once as each role: start, stop, add a subtask as the operator, fix that log as the leader, read the report as the admin.
 

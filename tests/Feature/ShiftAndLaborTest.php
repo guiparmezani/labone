@@ -109,24 +109,26 @@ class ShiftAndLaborTest extends TestCase
         $this->get(route('alertas.index'))
             ->assertOk()
             ->assertDontSee('Pedro Parado')
-            ->assertSee('Ninguém parado na jornada.');
+            ->assertSee('Nenhum alerta de jornada nos últimos 30 dias.');
 
         $this->travelTo(Carbon::parse('2026-10-01 07:15:00', Formato::TZ));
         $this->get(route('alertas.index'))
             ->assertOk()
             ->assertSee('01/10/2026')
-            ->assertSee('Pedro Parado não iniciou uma tarefa desde 07:00.')
+            ->assertSee('<strong>Pedro Parado</strong> está <strong>15 min</strong> sem iniciar uma tarefa', false)
+            ->assertSee('07:00')
             ->assertDontSee('Iniciou às')
             ->assertDontSee('Sem Jornada')
-            ->assertDontSee('Carregar dias anteriores')
+            ->assertDontSee('Carregar mais')
             ->assertDontSee('nav-count', false);
 
         $this->travelTo(Carbon::parse('2026-10-03 10:00:00', Formato::TZ));
         $this->get(route('alertas.index'))
             ->assertOk()
-            ->assertDontSee('Pedro Parado')
-            ->assertDontSee('01/10/2026')
-            ->assertSee('Carregar dias anteriores');
+            ->assertSee('<strong>Pedro Parado</strong> ficou <strong>10h</strong> sem iniciar uma tarefa', false)
+            ->assertSee('01/10/2026')
+            ->assertSee('02/10/2026')
+            ->assertDontSee('Carregar mais');
 
         $sabado = $this->followingRedirects()->post(route('alertas.carregar'), ['anteriores' => 5])
             ->assertOk()
@@ -134,7 +136,7 @@ class ShiftAndLaborTest extends TestCase
             ->assertSee('02/10/2026')
             ->assertSee('01/10/2026')
             ->assertDontSee('03/10/2026')
-            ->assertDontSee('Carregar dias anteriores');
+            ->assertDontSee('Carregar mais');
         $html = $sabado->getContent();
         $this->assertNotFalse($html);
         $this->assertLessThan(strpos($html, '01/10/2026'), strpos($html, '02/10/2026'));
@@ -152,7 +154,7 @@ class ShiftAndLaborTest extends TestCase
         $this->assertNotNull($tarde);
     }
 
-    public function test_carregar_dias_anteriores_traz_cinco_por_vez(): void
+    public function test_abre_com_cinco_alertas_e_carrega_mais_cinco_por_vez(): void
     {
         $this->actingAsRole(Role::Leader);
         User::factory()->operator()->create([
@@ -165,17 +167,17 @@ class ShiftAndLaborTest extends TestCase
         $this->travelTo(Carbon::parse('2026-10-01 07:15:00', Formato::TZ));
 
         $hoje = $this->get(route('alertas.index'))->assertOk()->assertSee('01/10/2026')->assertSee('value="5"', false);
-        $this->assertSame(1, substr_count((string) $hoje->getContent(), 'alert-day'));
+        $this->assertSame(5, substr_count((string) $hoje->getContent(), 'alert-day'));
 
         $cinco = $this->followingRedirects()->post(route('alertas.carregar'), ['anteriores' => 5])->assertOk()->assertSee('value="10"', false);
-        $this->assertSame(6, substr_count((string) $cinco->getContent(), 'alert-day'));
+        $this->assertSame(10, substr_count((string) $cinco->getContent(), 'alert-day'));
         $this->assertLessThan(strpos((string) $cinco->getContent(), '25/09/2026'), strpos((string) $cinco->getContent(), '30/09/2026'));
 
         $recarregado = $this->get(route('alertas.index', ['anteriores' => 5]))->assertOk();
-        $this->assertSame(1, substr_count((string) $recarregado->getContent(), 'alert-day'));
+        $this->assertSame(5, substr_count((string) $recarregado->getContent(), 'alert-day'));
 
         $dez = $this->followingRedirects()->post(route('alertas.carregar'), ['anteriores' => 10])->assertOk();
-        $this->assertSame(11, substr_count((string) $dez->getContent(), 'alert-day'));
+        $this->assertSame(15, substr_count((string) $dez->getContent(), 'alert-day'));
     }
 
     public function test_iniciar_o_ponto_fecha_a_linha_e_outro_buraco_abre_outra(): void
@@ -200,8 +202,9 @@ class ShiftAndLaborTest extends TestCase
 
         $this->get(route('alertas.index'))
             ->assertOk()
-            ->assertSee('Pedro Volta não iniciou uma tarefa desde 07:00.')
-            ->assertSee('Iniciou às 07:20.');
+            ->assertSee('<strong>Pedro Volta</strong> ficou <strong>20 min</strong> sem iniciar uma tarefa', false)
+            ->assertSee('07:00')
+            ->assertDontSee('Iniciou às');
 
         TimeLog::query()->where('user_id', $pedro->id)->update([
             'ended_at' => Carbon::parse('2026-10-01 07:30:00', Formato::TZ)->utc(),
@@ -210,11 +213,125 @@ class ShiftAndLaborTest extends TestCase
 
         $html = $this->get(route('alertas.index'))->assertOk()->getContent();
         $this->assertNotFalse($html);
-        $this->assertSame(2, substr_count($html, 'Pedro Volta não iniciou uma tarefa desde'));
-        $this->assertStringContainsString('desde 07:00.', $html);
-        $this->assertStringContainsString('Iniciou às 07:20.', $html);
-        $this->assertStringContainsString('desde 07:30.', $html);
-        $this->assertLessThan(strpos($html, 'desde 07:00.'), strpos($html, 'desde 07:30.'));
+        $this->assertSame(2, substr_count($html, '<strong>Pedro Volta</strong>'));
+        $this->assertStringContainsString('ficou <strong>20 min</strong>', $html);
+        $this->assertStringContainsString('está <strong>20 min</strong>', $html);
+        $this->assertLessThan(strpos($html, '>07:00</time>'), strpos($html, '>07:30</time>'));
+
+        $this->travelTo(Carbon::parse('2026-10-01 08:00:00', Formato::TZ));
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertSee('ficou <strong>20 min</strong>', false)
+            ->assertSee('está <strong>30 min</strong>', false)
+            ->assertDontSee('Iniciou às');
+    }
+
+    public function test_dia_novo_sem_alertas_mostra_os_ultimos_cinco_em_ordem(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        User::factory()->operator()->create([
+            'name' => 'Pedro Historico',
+            'shift_start' => '07:00',
+            'shift_end' => '17:00',
+            'created_at' => Carbon::parse('2026-09-01 06:00:00', Formato::TZ),
+        ]);
+        $this->travelTo(Carbon::parse('2026-10-05 06:30:00', Formato::TZ));
+
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertViewHas('gaps', fn ($gaps) => $gaps->count() === 5)
+            ->assertSeeInOrder(['02/10/2026', '01/10/2026', '30/09/2026', '29/09/2026', '28/09/2026'])
+            ->assertSee('ficou <strong>10h</strong>', false)
+            ->assertDontSee('05/10/2026')
+            ->assertDontSee('25/09/2026')
+            ->assertSee('Carregar mais');
+    }
+
+    public function test_todos_os_alertas_de_hoje_aparecem_mesmo_passando_de_cinco(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        User::factory()->operator()->count(7)->create([
+            'shift_start' => '07:00',
+            'shift_end' => '17:00',
+            'created_at' => Carbon::parse('2026-10-01 06:00:00', Formato::TZ),
+        ]);
+        $this->travelTo(Carbon::parse('2026-10-01 07:20:00', Formato::TZ));
+
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertViewHas('gaps', fn ($gaps) => $gaps->count() === 7)
+            ->assertDontSee('Carregar mais');
+    }
+
+    public function test_ordem_do_dia_usa_inicio_da_inatividade_e_nao_quando_a_pessoa_voltou(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $earlier = User::factory()->operator()->create([
+            'name' => 'Ana Inicio Antigo',
+            'shift_start' => '07:00',
+            'shift_end' => '17:00',
+            'created_at' => Carbon::parse('2026-10-01 06:00:00', Formato::TZ),
+        ]);
+        $later = User::factory()->operator()->create([
+            'name' => 'Bruno Inicio Recente',
+            'shift_start' => '08:00',
+            'shift_end' => '17:00',
+            'created_at' => Carbon::parse('2026-10-01 06:00:00', Formato::TZ),
+        ]);
+        foreach ([[$earlier, '11:00'], [$later, '09:00']] as [$operator, $start]) {
+            TimeLog::factory()->open()->create([
+                'user_id' => $operator->id,
+                'created_by' => $leader->id,
+                'updated_by' => $leader->id,
+                'started_at' => Carbon::parse('2026-10-01 '.$start, Formato::TZ)->utc(),
+            ]);
+        }
+        $this->travelTo(Carbon::parse('2026-10-01 11:05:00', Formato::TZ));
+
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Bruno Inicio Recente', 'Ana Inicio Antigo'])
+            ->assertSee('ficou <strong>1h</strong>', false)
+            ->assertSee('ficou <strong>4h</strong>', false);
+    }
+
+    public function test_duracao_aberta_cresce_e_a_jornada_encerrada_fica_congelada(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        User::factory()->operator()->create([
+            'name' => 'Pedro Duracao',
+            'shift_start' => '07:00',
+            'shift_end' => '12:00',
+            'shift_afternoon_start' => '13:00',
+            'shift_afternoon_end' => '17:00',
+            'created_at' => Carbon::parse('2026-10-01 06:00:00', Formato::TZ),
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-10-01 07:15:00', Formato::TZ));
+        $this->get(route('alertas.index'))->assertOk()->assertSee('está <strong>15 min</strong>', false);
+
+        $this->travelTo(Carbon::parse('2026-10-01 08:15:00', Formato::TZ));
+        $this->get(route('alertas.index'))->assertOk()->assertSee('está <strong>1h 15 min</strong>', false);
+
+        $this->travelTo(Carbon::parse('2026-10-01 12:30:00', Formato::TZ));
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertSee('ficou <strong>5h</strong>', false)
+            ->assertDontSee('está <strong>', false)
+            ->assertDontSee('13:00');
+
+        $this->travelTo(Carbon::parse('2026-10-01 13:15:00', Formato::TZ));
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertSee('ficou <strong>5h</strong>', false)
+            ->assertSee('está <strong>15 min</strong>', false);
+
+        $this->travelTo(Carbon::parse('2026-10-02 06:00:00', Formato::TZ));
+        $this->get(route('alertas.index'))
+            ->assertOk()
+            ->assertSee('ficou <strong>5h</strong>', false)
+            ->assertSee('ficou <strong>4h</strong>', false)
+            ->assertDontSee('está <strong>', false);
     }
 
     public function test_almoco_entre_os_dois_turnos_nao_dispara(): void
@@ -247,7 +364,8 @@ class ShiftAndLaborTest extends TestCase
         $this->travelTo(Carbon::parse('2026-10-01 13:15:00', Formato::TZ));
         $this->get(route('alertas.index'))
             ->assertOk()
-            ->assertSee('Pedro Almoco não iniciou uma tarefa desde 13:00.');
+            ->assertSee('<strong>Pedro Almoco</strong> está <strong>15 min</strong> sem iniciar uma tarefa', false)
+            ->assertSee('13:00');
     }
 
     public function test_valor_realizado_soma_material_e_mao_de_obra(): void
@@ -385,7 +503,7 @@ class ShiftAndLaborTest extends TestCase
             'name' => 'Pedro Parado',
             'shift_start' => '07:00',
             'shift_end' => '17:00',
-            'created_at' => Carbon::parse('2026-09-28 06:00:00', Formato::TZ),
+            'created_at' => Carbon::parse('2026-09-01 06:00:00', Formato::TZ),
         ]);
 
         $this->travelTo(Carbon::parse('2026-10-01 07:15:00', Formato::TZ));
@@ -397,7 +515,8 @@ class ShiftAndLaborTest extends TestCase
         $this->actingAs($marina)->get(route('alertas.index'))
             ->assertOk()
             ->assertSee('01/10/2026')
-            ->assertDontSee('30/09/2026')
+            ->assertSee('30/09/2026')
+            ->assertDontSee('24/09/2026')
             ->assertDontSee('nav-count', false);
 
         $this->actingAs($marina)->get(route('inicio'))

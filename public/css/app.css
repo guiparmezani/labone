@@ -534,12 +534,50 @@ tr:last-child td { border-bottom: 0; }
 }
 
 .alert-day {
-    margin: 1.15rem 0 0.4rem;
+    margin: 1.5rem 0 0.75rem;
     font-size: 0.95rem;
     font-weight: 650;
 }
 
 .alert-day:first-of-type { margin-top: 0; }
+
+.shift-alerts { margin-bottom: 1rem; }
+
+.shift-alert-list {
+    display: grid;
+    gap: 0.85rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.shift-alert {
+    min-width: 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--paper);
+}
+
+.shift-alert.is-ongoing {
+    border-left: 4px solid #a16207;
+    background: #fffbeb;
+}
+
+.shift-alert-message {
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.shift-alert-message strong { font-weight: 700; }
+
+.shift-alert-since {
+    margin: 0.4rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
 
 .alert-more { margin-top: 1rem; }
 

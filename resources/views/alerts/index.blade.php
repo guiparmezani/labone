@@ -9,36 +9,31 @@
         <h1>Alertas</h1>
     </div>
 
-    <section class="panel" style="margin-bottom: 1rem;">
+    <section class="panel shift-alerts">
         <h2>Jornada</h2>
         @php
             $porData = $gaps
-                ->sortByDesc(fn ($gap) => ($gap->startedAt ?? $gap->since)->getTimestamp())
                 ->groupBy(fn ($gap) => $gap->since->format('Y-m-d'))
                 ->sortKeysDesc();
         @endphp
         @forelse ($porData as $doDia)
             <h3 class="alert-day">{{ Formato::data($doDia->first()->since) }}</h3>
-            <ul class="list">
+            <ul class="shift-alert-list">
                 @foreach ($doDia as $gap)
-                    <li>
-                        <span>
-                            {{ $gap->user->name }} não iniciou uma tarefa desde {{ Formato::hora($gap->since) }}.
-                            @if ($gap->startedAt)
-                                Iniciou às {{ Formato::hora($gap->startedAt) }}.
-                            @endif
-                        </span>
+                    <li @class(['shift-alert', 'is-ongoing' => $gap->isOngoing()])>
+                        <p class="shift-alert-message"><strong>{{ $gap->user->name }}</strong> {{ $gap->isOngoing() ? 'está' : 'ficou' }} <strong>{{ Formato::duracaoCurta($gap->minutes()) }}</strong> sem iniciar uma tarefa</p>
+                        <p class="shift-alert-since">Desde <time datetime="{{ $gap->since->toIso8601String() }}">{{ Formato::hora($gap->since) }}</time></p>
                     </li>
                 @endforeach
             </ul>
         @empty
-            <p class="muted">Ninguém parado na jornada.</p>
+            <p class="muted">Nenhum alerta de jornada nos últimos 30 dias.</p>
         @endforelse
         @if ($podeCarregar)
             <form class="alert-more" method="POST" action="{{ route('alertas.carregar') }}">
                 @csrf
                 <input type="hidden" name="anteriores" value="{{ $anteriores + 5 }}">
-                <button class="btn btn-ghost" type="submit">Carregar dias anteriores</button>
+                <button class="btn btn-ghost" type="submit">Carregar mais</button>
             </form>
         @endif
     </section>

@@ -27,6 +27,12 @@ Projeto ou tarefa que já tem lançamento não é apagado. O projeto é encerrad
 
 Horários na tela são de Brasília. Valores são em reais.
 
+## Alertas de jornada
+
+Em **Alertas → Jornada**, o administrador e o líder veem quem passou pelo menos 15 minutos sem iniciar uma tarefa durante a jornada cadastrada, em dias úteis. A tela já mostra os cinco alertas mais recentes, quando houver, e todos os de hoje. Os mais novos ficam no topo. **Carregar mais** mostra mais cinco, dentro do histórico dos últimos 30 dias.
+
+“**Marcelo** está **20 min** sem iniciar uma tarefa” indica um período ainda em andamento. Quando ele inicia uma tarefa, a mensagem passa a “**Marcelo** ficou **20 min** sem iniciar uma tarefa”, mantendo aquela duração. **Desde 07:00** informa quando a espera começou. O tempo também para no fim da jornada e não inclui o intervalo entre duas jornadas.
+
 ## Relatórios
 
 Só o administrador. O período padrão é o mês atual. Ponto ainda aberto não entra na soma. Os dois arquivos CSV abrem no Excel em português: separador ponto e vírgula, decimal com vírgula.

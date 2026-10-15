@@ -35,6 +35,17 @@ class Formato
         return number_format($minutos / 60, 2, ',', '');
     }
 
+    public static function duracaoCurta(int $minutos): string
+    {
+        if ($minutos < 60) {
+            return $minutos.' min';
+        }
+
+        $restante = $minutos % 60;
+
+        return intdiv($minutos, 60).'h'.($restante > 0 ? ' '.$restante.' min' : '');
+    }
+
     public static function centavos(?string $valor): ?int
     {
         $limpo = preg_replace('/[^\d,.-]/', '', trim((string) $valor)) ?? '';
