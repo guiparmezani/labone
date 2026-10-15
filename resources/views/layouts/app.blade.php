@@ -24,7 +24,7 @@
     <meta name="twitter:description" content="{{ $resumo }}">
     <meta name="twitter:image" content="{{ url('/og.png') }}">
     <link rel="icon" href="{{ asset('favicon.ico') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
 </head>
 <body>
     <header class="topbar">
