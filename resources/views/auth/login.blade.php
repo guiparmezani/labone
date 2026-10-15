@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('body-class', 'auth-page')
+
 @section('content')
     <section class="panel panel-narrow">
         <h1>Entrar</h1>

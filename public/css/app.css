@@ -323,6 +323,29 @@ tr.is-clickable:focus-visible { background: #f4f3f1; }
 
 .panel-narrow { max-width: 28rem; }
 
+.auth-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+.auth-page .page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 0 auto;
+    padding: 1.5rem 0;
+}
+
+.auth-page .page > * {
+    width: 100%;
+    max-width: 28rem;
+}
+
 .stack { display: flex; flex-direction: column; gap: 0.9rem; }
 
 .filter-bar {

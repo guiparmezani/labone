@@ -26,7 +26,7 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
 </head>
-<body>
+<body class="@yield('body-class')">
     <header class="topbar">
         <a class="brand" href="{{ auth()->check() ? route('inicio') : route('entrar') }}">Controle de projetos</a>
         @auth
