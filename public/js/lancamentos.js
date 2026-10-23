@@ -14,6 +14,8 @@
         var inicio = caixa.querySelector('[name="started_at"]');
         var fim = caixa.querySelector('[name="ended_at"]');
         var total = caixa.querySelector('[data-duration]');
+        var inicioInicial = inicio.value;
+        var fimInicial = fim.value;
 
         function calcular() {
             var de = instante(inicio.value, caixa.getAttribute('data-original-start'));
@@ -37,7 +39,11 @@
 
         caixa.addEventListener('change', calcular);
         caixa.closest('form').addEventListener('reset', function () {
-            setTimeout(calcular, 0);
+            setTimeout(function () {
+                inicio.value = inicioInicial;
+                fim.value = fimInicial;
+                calcular();
+            }, 0);
         });
         calcular();
     });
