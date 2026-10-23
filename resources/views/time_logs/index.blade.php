@@ -58,6 +58,7 @@
                     <th>Projeto</th>
                     <th>Tarefa</th>
                     <th>Início</th>
+                    <th>Fim</th>
                     <th>Duração</th>
                     <th></th>
                 </tr>
@@ -70,6 +71,7 @@
                         <td>{{ $log->subtask->project->name }}</td>
                         <td>{{ $log->subtask->name }}</td>
                         <td>{{ \App\Support\Formato::dataHora($log->started_at) }}</td>
+                        <td>{{ $log->ended_at ? \App\Support\Formato::dataHora($log->ended_at) : 'Em andamento' }}</td>
                         <td>{{ $log->minutes() === null ? 'Em andamento' : \App\Support\Formato::minutos($log->minutes()) }}</td>
                         <td class="cell-end">
                             @can('delete', $log)
@@ -81,7 +83,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">Nenhum lançamento neste período.</td></tr>
+                    <tr><td colspan="7">Nenhum lançamento neste período.</td></tr>
                 @endforelse
             </tbody>
         </table>

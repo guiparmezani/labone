@@ -331,11 +331,11 @@ Operator project screen, reached from Início: project name as a heading, then i
 
 Admin and leader. Filter by project, user, month, and a date range on `started_at`. Default is the current month in São Paulo, and the heading names it, like **Outubro de 2026**. Choosing another month jumps to that month. A custom De/Até range changes the heading to **Período selecionado**.
 
-Columns: operator, project, task, start, duration as `Hh MMmin`. The end is not shown. It is the start plus the duration.
+Columns: operator, project, task, start, end, duration as `Hh MMmin`. Start and end include their dates and use Brasília time.
 
-**Novo lançamento** is admin only and stays on its own page. Admin and leader open an existing row in a lightbox on this page: person, task, start, and duration as decimal hours. A validation error reopens that same lightbox. **Apagar** stays on the row, asks in the app popup, and is available to admin and leader.
+**Novo lançamento** is admin only and stays on its own page. Admin and leader open an existing row in a lightbox on this page: person, task, **Início**, **Fim**, and a read-only **Total de horas**. Start and end each accept a date and time; the total updates automatically while editing and is calculated again on the server from the saved interval. Work across midnight needs the finish date on the following day. Both fields are required, the end must be after the start and cannot be in the future. An unchanged minute on an existing entry retains its original seconds; correcting the end does not change the start, origin, or author. The editor is recorded as updated_by. Older open forms that submit decimal duration remain accepted. A validation error reopens that same lightbox. **Apagar** stays on the row, asks in the app popup, and is available to admin and leader.
 
-Open logs appear in this list with duration shown as "Em andamento".
+Open logs appear in this list with end and duration shown as "Em andamento". Admins and leaders can close one by entering its finish in the editor.
 
 ### Relatórios
 
@@ -374,7 +374,12 @@ Return the message in Portuguese next to the field.
 | Bad login | E-mail ou senha inválidos. |
 | Same subtask already running | Esta tarefa já está em andamento. |
 | Third-party or closed | Este item não aceita ponto. |
-| Duration is zero | A duração precisa ser maior que zero. |
+| Missing finish | Informe o fim. |
+| Invalid start | Informe o início com uma data e horário válidos. |
+| Invalid finish | Informe o fim com uma data e horário válidos. |
+| Finish is not after start | O fim precisa ser depois do início. |
+| Finish is in the future | O fim não pode passar do momento atual. |
+| Legacy decimal duration is zero | A duração precisa ser maior que zero. |
 | Duration would end in the future | A duração não pode passar do momento atual. |
 | Duration is not a number of hours | Informe a duração em horas, como 1,5. |
 | Revision linked to the wrong row | A revisão precisa apontar para uma equipe terceira deste projeto. |
@@ -393,7 +398,7 @@ Return the message in Portuguese next to the field.
 | Hours in CSV | Decimal comma, two places |
 | Empty totals | `0h 00min` and `R$ 0,00` for admin and leader. Operator screens do not render these at all. |
 
-Planned hours and a time-log duration are edited as a decimal hour value (`1,5` and `1.5` both mean 90 minutes). Everywhere else, people read `Hh MMmin`.
+Planned hours are edited as a decimal hour value (`1,5` and `1.5` both mean 90 minutes). Time-log duration is calculated from the start and finish dates/times. People read durations as `Hh MMmin`, using whole elapsed minutes.
 
 ## 11. Routes
 

@@ -14,6 +14,8 @@ This is the v1 pilot. The client tests it, then further changes are quoted again
 
 One open timer per person. Logging out does not stop it. Deactivating a user does.
 
+In **Lançamentos**, administrators and leaders correct entries by editing **Início** and **Fim**, each with a date and time in Brasília. **Total de horas** updates automatically; it is not entered as decimal hours. For work across midnight, set the finish date to the following day. The list also shows the finish, and saved corrections feed the existing totals and reports. Unchanged displayed timestamps retain their original seconds.
+
 A project has internal subtasks (the clock) and third-party subtasks (a typed budget, no clock). Each subtask can also store planned hours, a planned amount, a realized amount someone types in, and an hour alarm. The alarm is a percentage plus an on/off switch. When it is on and finished hours cross that percentage, the admin sees it on the home screen. A running timer does not count.
 
 A project can be copied under a new name. The copy keeps the plan and the alarms, and drops the hours already logged and the realized amounts.

@@ -27,6 +27,12 @@ Projeto ou tarefa que já tem lançamento não é apagado. O projeto é encerrad
 
 Horários na tela são de Brasília. Valores são em reais.
 
+## Corrigir lançamentos
+
+Em **Lançamentos**, o administrador e o líder clicam na linha para editar. **Início** e **Fim** têm data e horário; **Total de horas** é calculado automaticamente. Confira o total e aperte **Salvar**. A lista também mostra o fim, e os relatórios usam o intervalo corrigido.
+
+Se a tarefa terminou de madrugada, ajuste a data do **Fim** para o dia seguinte. Exemplo: início em **21/10/2026 08:30**, fim em **22/10/2026 02:00**, total de **17h 30min**. Para corrigir um ponto parado tarde demais, basta informar o fim real. O fim precisa ser posterior ao início e não pode estar no futuro.
+
 ## Alertas de jornada
 
 Em **Alertas → Jornada**, o administrador e o líder veem quem passou pelo menos 15 minutos sem iniciar uma tarefa durante a jornada cadastrada, em dias úteis. A tela já mostra os cinco alertas mais recentes, quando houver, e todos os de hoje. Os mais novos ficam no topo. **Carregar mais** mostra mais cinco, dentro do histórico dos últimos 30 dias.

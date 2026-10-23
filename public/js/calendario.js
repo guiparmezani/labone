@@ -136,6 +136,7 @@
             }
 
             desenhar();
+            oculto.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         function desenhar() {
@@ -213,6 +214,7 @@
             texto.setCustomValidity('');
             var lido = ler(texto.value, modo);
             oculto.value = lido ? maquina(lido, modo) : '';
+            oculto.dispatchEvent(new Event('change', { bubbles: true }));
 
             if (lido) {
                 vista = lido;
@@ -267,6 +269,7 @@
             oculto.value = '';
             texto.setCustomValidity('');
             pop.hidden = true;
+            oculto.dispatchEvent(new Event('change', { bubbles: true }));
         });
 
         if (hora) {

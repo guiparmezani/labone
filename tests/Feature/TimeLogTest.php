@@ -49,12 +49,12 @@ class TimeLogTest extends TestCase
             ->assertDontSee(route('lancamentos.edit', $log), false)
             ->assertSee('Apagar')
             ->assertDontSee('>Editar<', false)
-            ->assertDontSee('<th>Fim</th>', false);
+            ->assertSee('<th>Fim</th>', false);
         $this->get('/lancamentos/'.$log->id.'/editar')
             ->assertOk()
             ->assertSee('Editar lançamento')
-            ->assertSee('Duração')
-            ->assertDontSee('name="ended_at"', false);
+            ->assertSee('Total de horas')
+            ->assertSee('name="ended_at"', false);
 
         $inicio = Carbon::now(Formato::TZ)->subHours(4)->startOfMinute();
 
@@ -161,14 +161,14 @@ class TimeLogTest extends TestCase
             'user_id' => $operator->id,
             'subtask_id' => $subtask->id,
             'started_at' => $inicio->format('Y-m-d\TH:i'),
-            'duration' => 'abc',
+            'ended_at' => $inicio->copy()->subHour()->format('Y-m-d\TH:i'),
             'lightbox' => 'editar-lancamento-'.$log->id,
         ]);
 
-        $pagina->assertSee('Informe a duração em horas, como 1,5.');
-        $this->assertSame(1, substr_count($pagina->getContent(), 'Informe a duração em horas, como 1,5.'));
-        $pagina->assertSee('value="abc"', false);
-        $pagina->assertSee('value="'.Formato::horasEntrada($outro->minutes()).'"', false);
+        $pagina->assertSee('O fim precisa ser depois do início.');
+        $this->assertSame(1, substr_count($pagina->getContent(), 'O fim precisa ser depois do início.'));
+        $pagina->assertSee('value="'.$inicio->copy()->subHour()->format('Y-m-d\TH:i').'"', false);
+        $pagina->assertSee('value="'.Formato::local($outro->ended_at).'"', false);
         $pagina->assertSee('document.getElementById("editar-lancamento-'.$log->id.'")?.showModal();', false);
         $this->assertSame(60, $log->refresh()->minutes());
     }
@@ -219,6 +219,123 @@ class TimeLogTest extends TestCase
             ->assertOk()
             ->assertSee('Período selecionado')
             ->assertSee('15/09/2026');
+    }
+
+    public function test_corrige_fim_de_trabalho_noturno_e_recalcula_total_sem_alterar_origem(): void
+    {
+        $leader = $this->actingAsRole(Role::Leader);
+        $this->travelTo(Carbon::parse('2026-10-23 10:00:00', Formato::TZ));
+        $operator = User::factory()->operator()->create();
+        $log = TimeLog::factory()->create([
+            'user_id' => $operator->id,
+            'started_at' => Carbon::parse('2026-10-21 08:30:00', Formato::TZ)->utc(),
+            'ended_at' => Carbon::parse('2026-10-22 07:00:00', Formato::TZ)->utc(),
+            'source' => TimeLogSource::Timer,
+            'created_by' => $operator->id,
+        ]);
+
+        $this->get(route('lancamentos.edit', $log))->assertOk()
+            ->assertSee('value="2026-10-22T07:00"', false)
+            ->assertSee('22h 30min');
+
+        $this->put(route('lancamentos.update', $log), [
+            'user_id' => $operator->id,
+            'subtask_id' => $log->subtask_id,
+            'started_at' => '2026-10-21T08:30',
+            'ended_at' => '2026-10-22T02:00',
+            'duration' => '9999',
+        ])->assertRedirect('/lancamentos')->assertSessionHasNoErrors();
+
+        $log->refresh();
+        $this->assertSame('2026-10-21 11:30:00', $log->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-22 05:00:00', $log->ended_at->format('Y-m-d H:i:s'));
+        $this->assertSame(1050, $log->minutes());
+        $this->assertSame(TimeLogSource::Timer, $log->source);
+        $this->assertSame($operator->id, $log->created_by);
+        $this->assertSame($leader->id, $log->updated_by);
+        $this->assertSame(1050, (int) TimeLog::query()->whereKey($log->id)->selectRaw(TimeLog::durationSql().' AS minutes')->first()->minutes);
+        $this->get('/lancamentos')->assertSee('22/10/2026 02:00')->assertSee('17h 30min');
+    }
+
+    public function test_cria_lancamento_com_inicio_e_fim_em_brasilia(): void
+    {
+        $admin = $this->actingAsRole(Role::Admin);
+        $subtask = Subtask::factory()->create();
+
+        $this->post('/lancamentos', [
+            'user_id' => $admin->id,
+            'subtask_id' => $subtask->id,
+            'started_at' => '2026-10-21T23:45',
+            'ended_at' => '2026-10-22T00:15',
+        ])->assertRedirect('/lancamentos')->assertSessionHasNoErrors();
+
+        $log = TimeLog::query()->sole();
+        $this->assertSame(30, $log->minutes());
+        $this->assertSame(TimeLogSource::Manual, $log->source);
+        $this->assertSame('2026-10-22 02:45:00', $log->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-22 03:15:00', $log->ended_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_recusa_fim_ausente_invalido_igual_anterior_ou_futuro_sem_mudar_lancamento(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $this->travelTo(Carbon::parse('2026-10-23 10:00:00', Formato::TZ));
+        $log = TimeLog::factory()->create([
+            'started_at' => Carbon::parse('2026-10-22 08:30:00', Formato::TZ)->utc(),
+            'ended_at' => Carbon::parse('2026-10-22 10:00:00', Formato::TZ)->utc(),
+        ]);
+        $original = $log->refresh()->getAttributes();
+
+        foreach (['', 'abc', '2026-02-30T10:00', '2026-10-22T08:30', '2026-10-22T07:30', '2026-10-23T10:01'] as $end) {
+            $this->put(route('lancamentos.update', $log), [
+                'user_id' => $log->user_id,
+                'subtask_id' => $log->subtask_id,
+                'started_at' => '2026-10-22T08:30',
+                'ended_at' => $end,
+            ])->assertSessionHasErrors('ended_at');
+
+            $this->assertSame($original, $log->refresh()->getAttributes());
+        }
+    }
+
+    public function test_edicao_sem_mudar_horarios_preserva_segundos_e_total_original(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $log = TimeLog::factory()->create([
+            'started_at' => Carbon::parse('2026-10-21 08:30:37', Formato::TZ)->utc(),
+            'ended_at' => Carbon::parse('2026-10-21 10:30:12', Formato::TZ)->utc(),
+        ]);
+
+        $this->put(route('lancamentos.update', $log), [
+            'user_id' => $log->user_id,
+            'subtask_id' => $log->subtask_id,
+            'started_at' => '2026-10-21T08:30',
+            'ended_at' => '2026-10-21T10:30',
+        ])->assertRedirect('/lancamentos')->assertSessionHasNoErrors();
+
+        $log->refresh();
+        $this->assertSame('2026-10-21 11:30:37', $log->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-21 13:30:12', $log->ended_at->format('Y-m-d H:i:s'));
+        $this->assertSame(119, $log->minutes());
+    }
+
+    public function test_lider_pode_informar_fim_de_ponto_aberto(): void
+    {
+        $this->actingAsRole(Role::Leader);
+        $log = TimeLog::factory()->open()->create([
+            'started_at' => Carbon::parse('2026-10-21 08:30:37', Formato::TZ)->utc(),
+        ]);
+
+        $this->put(route('lancamentos.update', $log), [
+            'user_id' => $log->user_id,
+            'subtask_id' => $log->subtask_id,
+            'started_at' => '2026-10-21T08:30',
+            'ended_at' => '2026-10-21T09:00',
+        ])->assertRedirect('/lancamentos')->assertSessionHasNoErrors();
+
+        $this->assertFalse($log->refresh()->isOpen());
+        $this->assertSame(29, $log->minutes());
+        $this->assertSame('2026-10-21 11:30:37', $log->started_at->format('Y-m-d H:i:s'));
     }
 
     public function test_calendario_de_lancamento_e_em_portugues(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\Subtask;
 use App\Models\TimeLog;
 use App\Models\User;
 use App\Services\TimeLogWriter;
@@ -190,21 +191,37 @@ class TimeLogController extends Controller
     }
 
     /**
-     * @return array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}
+     * @return array{user_id: int, subtask_id: int, started_at: string, ended_at?: string, duration_minutes?: int}
      */
     private function validated(Request $request): array
     {
+        $hasEnd = array_key_exists('ended_at', $request->all());
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'subtask_id' => ['required', 'integer', 'exists:subtasks,id'],
-            'started_at' => ['required', 'date'],
-            'duration' => ['required', 'string'],
+            'started_at' => ['required', $hasEnd ? 'date_format:Y-m-d\\TH:i' : 'date'],
+            ...($hasEnd
+                ? ['ended_at' => ['required', 'date_format:Y-m-d\\TH:i']]
+                : ['duration' => ['required', 'string']]),
         ], [
             'user_id.required' => 'Escolha a pessoa.',
             'subtask_id.required' => 'Escolha a tarefa.',
             'started_at.required' => 'Informe o início.',
+            'started_at.date_format' => 'Informe o início com uma data e horário válidos.',
+            'ended_at.required' => 'Informe o fim.',
+            'ended_at.date_format' => 'Informe o fim com uma data e horário válidos.',
             'duration.required' => 'Informe a duração.',
         ]);
+
+        $input = [
+            'user_id' => (int) $data['user_id'],
+            'subtask_id' => (int) $data['subtask_id'],
+            'started_at' => $data['started_at'],
+        ];
+
+        if ($hasEnd) {
+            return [...$input, 'ended_at' => $data['ended_at']];
+        }
 
         $minutes = Formato::minutosDeHoras($data['duration']);
 
@@ -215,9 +232,7 @@ class TimeLogController extends Controller
         }
 
         return [
-            'user_id' => (int) $data['user_id'],
-            'subtask_id' => (int) $data['subtask_id'],
-            'started_at' => $data['started_at'],
+            ...$input,
             'duration_minutes' => $minutes,
         ];
     }
@@ -229,7 +244,7 @@ class TimeLogController extends Controller
     {
         return [
             'users' => User::query()->orderBy('name')->get(),
-            'subtasks' => \App\Models\Subtask::query()
+            'subtasks' => Subtask::query()
                 ->with('project')
                 ->where('kind', 'internal')
                 ->orderBy('name')

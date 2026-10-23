@@ -6,9 +6,10 @@
     $inicio = $enviado
         ? old('started_at', $log ? \App\Support\Formato::local($log->started_at) : '')
         : ($log ? \App\Support\Formato::local($log->started_at) : '');
-    $duracao = $enviado
-        ? old('duration', ($log && $log->ended_at) ? \App\Support\Formato::horasEntrada($log->minutes()) : '')
-        : (($log && $log->ended_at) ? \App\Support\Formato::horasEntrada($log->minutes()) : '');
+    $fim = $enviado
+        ? old('ended_at', $log ? \App\Support\Formato::local($log->ended_at) : '')
+        : ($log ? \App\Support\Formato::local($log->ended_at) : '');
+    $total = ($log && $log->ended_at) ? \App\Support\Formato::minutos($log->minutes()) : ($log ? 'Em andamento' : 'Calculado ao salvar');
 @endphp
 <label class="field">
     <span>Pessoa</span>
@@ -34,22 +35,45 @@
         @error('subtask_id')<small class="error">{{ $message }}</small>@enderror
     @endif
 </label>
-<label class="field">
-    <span>Início</span>
-    @include('partials.calendario', [
-        'nome' => 'started_at',
-        'modo' => 'datetime',
-        'obrigatorio' => true,
-        'valor' => $inicio,
-    ])
-    @if ($enviado)
-        @error('started_at')<small class="error">{{ $message }}</small>@enderror
-    @endif
-</label>
-<label class="field">
-    <span>Duração</span>
-    <input type="text" name="duration" inputmode="decimal" placeholder="1,5" required value="{{ $duracao }}">
-    @if ($enviado)
-        @error('duration')<small class="error">{{ $message }}</small>@enderror
-    @endif
-</label>
+<div class="stack" data-time-interval
+    data-original-start="{{ $log?->started_at?->copy()->timezone(\App\Support\Formato::TZ)->format('Y-m-d\TH:i:s') }}"
+    data-original-end="{{ $log?->ended_at?->copy()->timezone(\App\Support\Formato::TZ)->format('Y-m-d\TH:i:s') }}">
+    <label class="field">
+        <span>Início</span>
+        @include('partials.calendario', [
+            'nome' => 'started_at',
+            'modo' => 'datetime',
+            'obrigatorio' => true,
+            'valor' => $inicio,
+        ])
+        @if ($enviado)
+            @error('started_at')<small class="error">{{ $message }}</small>@enderror
+        @endif
+    </label>
+    <label class="field">
+        <span>Fim</span>
+        @include('partials.calendario', [
+            'nome' => 'ended_at',
+            'modo' => 'datetime',
+            'obrigatorio' => true,
+            'valor' => $fim,
+        ])
+        @if ($enviado)
+            @error('ended_at')<small class="error">{{ $message }}</small>@enderror
+        @endif
+    </label>
+    <label class="field">
+        <span>Total de horas</span>
+        <input type="text" readonly data-duration value="{{ $total }}">
+        <small class="muted">Calculado pelo início e fim, no horário de Brasília. Para trabalhos de um dia para o outro, ajuste também a data do fim.</small>
+        @if ($enviado)
+            @error('duration')<small class="error">{{ $message }}</small>@enderror
+        @endif
+    </label>
+</div>
+
+@once
+    @push('scripts')
+        <script src="{{ asset('js/lancamentos.js') }}?v={{ filemtime(public_path('js/lancamentos.js')) }}"></script>
+    @endpush
+@endonce

@@ -16,14 +16,12 @@ use Illuminate\Validation\ValidationException;
 class TimeLogWriter
 {
     /**
-     * @param  array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}  $input
+     * @param  array{user_id: int, subtask_id: int, started_at: string, ended_at?: string, duration_minutes?: int}  $input
      */
     public function create(User $editor, array $input): TimeLog
     {
         $subtask = $this->internalSubtask((int) $input['subtask_id'], requireOpenProject: true);
-        $start = Formato::interpretarLocal($input['started_at']);
-        $end = $start->copy()->addMinutes($input['duration_minutes']);
-        $this->assertInterval($start, $end);
+        [$start, $end] = $this->interval($input);
 
         return TimeLog::query()->create([
             'user_id' => $input['user_id'],
@@ -37,14 +35,12 @@ class TimeLogWriter
     }
 
     /**
-     * @param  array{user_id: int, subtask_id: int, started_at: string, duration_minutes: int}  $input
+     * @param  array{user_id: int, subtask_id: int, started_at: string, ended_at?: string, duration_minutes?: int}  $input
      */
     public function update(User $editor, TimeLog $log, array $input): TimeLog
     {
         $subtask = $this->internalSubtask((int) $input['subtask_id'], requireOpenProject: false);
-        $start = Formato::interpretarLocal($input['started_at']);
-        $end = $start->copy()->addMinutes($input['duration_minutes']);
-        $this->assertInterval($start, $end);
+        [$start, $end] = $this->interval($input, $log);
 
         $log->fill([
             'user_id' => $input['user_id'],
@@ -57,19 +53,41 @@ class TimeLogWriter
         return $log;
     }
 
-    private function assertInterval(Carbon $start, Carbon $end): void
+    /**
+     * @param  array{started_at: string, ended_at?: string, duration_minutes?: int}  $input
+     * @return array{Carbon, Carbon}
+     */
+    private function interval(array $input, ?TimeLog $log = null): array
     {
+        $start = $this->localTime($input['started_at'], $log?->started_at);
+        $hasEnd = isset($input['ended_at']);
+        $end = $hasEnd
+            ? $this->localTime($input['ended_at'], $log?->ended_at)
+            : $start->copy()->addMinutes($input['duration_minutes']);
+        $field = $hasEnd ? 'ended_at' : 'duration';
+
         if (! $end->greaterThan($start)) {
             throw ValidationException::withMessages([
-                'duration' => 'A duração precisa ser maior que zero.',
+                $field => $hasEnd ? 'O fim precisa ser depois do início.' : 'A duração precisa ser maior que zero.',
             ]);
         }
 
         if ($end->greaterThan(now())) {
             throw ValidationException::withMessages([
-                'duration' => 'A duração não pode passar do momento atual.',
+                $field => $hasEnd ? 'O fim não pode passar do momento atual.' : 'A duração não pode passar do momento atual.',
             ]);
         }
+
+        return [$start, $end];
+    }
+
+    private function localTime(string $value, ?Carbon $original): Carbon
+    {
+        if ($original !== null && Formato::local($original) === $value) {
+            return $original->copy();
+        }
+
+        return Formato::interpretarLocal($value);
     }
 
     private function internalSubtask(int $id, bool $requireOpenProject): Subtask

@@ -114,6 +114,7 @@
         })();
     </script>
     <script src="{{ asset('js/timer.js') }}"></script>
-    <script src="{{ asset('js/calendario.js') }}"></script>
+    <script src="{{ asset('js/calendario.js') }}?v={{ filemtime(public_path('js/calendario.js')) }}"></script>
+    @stack('scripts')
 </body>
 </html>
