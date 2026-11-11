@@ -13,6 +13,7 @@ use App\Services\ProjectCsvImport;
 use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -60,12 +61,13 @@ class ProjectController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
-        return redirect()->route('projetos.show', $project)->with('status', 'Projeto criado.');
+        return redirect()->route($request->user()->isOperator() ? 'projetos.ponto' : 'projetos.show', $project)
+            ->with('status', 'Projeto criado.');
     }
 
     public function import(Request $request, ProjectCsvImport $import): RedirectResponse
     {
-        $this->authorize('create', Project::class);
+        $this->authorize('viewAny', Project::class);
 
         $request->validate([
             'arquivo' => ['required', 'file', 'extensions:csv,txt', 'max:5120'],
@@ -125,8 +127,8 @@ class ProjectController extends Controller
 
         return view('projects.show', [
             'project' => $project,
-            'internal' => $project->subtasks->where('kind', \App\Enums\SubtaskKind::Internal),
-            'thirdParty' => $project->subtasks->where('kind', \App\Enums\SubtaskKind::ThirdParty),
+            'internal' => $project->subtasks->where('kind', SubtaskKind::Internal),
+            'thirdParty' => $project->subtasks->where('kind', SubtaskKind::ThirdParty),
         ]);
     }
 
@@ -198,11 +200,11 @@ class ProjectController extends Controller
     }
 
     /**
-     * @return array{project: Project, internal: \Illuminate\Support\Collection, thirdParty: \Illuminate\Support\Collection, revisions: \Illuminate\Support\Collection}
+     * @return array{project: Project, internal: Collection, thirdParty: Collection, revisions: Collection}
      */
     private function sheet(Project $project): array
     {
-        $consumed = \App\Models\TimeLog::consumedMinutesSql('subtasks.id');
+        $consumed = TimeLog::consumedMinutesSql('subtasks.id');
 
         $project->load(['subtasks' => function ($query) use ($consumed) {
             $query->withLoggedMinutes()
@@ -317,14 +319,14 @@ class ProjectController extends Controller
 
     public function copyForm(Project $project): View
     {
-        $this->authorize('create', Project::class);
+        $this->authorize('view', $project);
 
         return view('projects.copy', ['project' => $project]);
     }
 
     public function copy(Request $request, Project $project): RedirectResponse
     {
-        $this->authorize('create', Project::class);
+        $this->authorize('view', $project);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:160'],

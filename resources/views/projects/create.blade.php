@@ -8,7 +8,7 @@
             @include('projects._form', ['project' => new \App\Models\Project()])
             <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar</button>
-                <a class="btn btn-ghost" href="{{ route('projetos.index') }}">Cancelar</a>
+                <a class="btn btn-ghost" href="{{ route(auth()->user()->isOperator() ? 'inicio' : 'projetos.index') }}">Cancelar</a>
             </div>
         </form>
     </section>

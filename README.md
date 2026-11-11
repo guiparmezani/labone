@@ -10,7 +10,7 @@ This is the v1 pilot. The client tests it, then further changes are quoted again
 |---|---|
 | Administrador | Everything: projects, time logs, reports, CSV, users, and the alerts that have been reached |
 | Líder | Projects, subtasks, and any time log. No reports and no user admin |
-| Operador | Start and stop their own timer, and add an internal subtask. No budgets, planned hours, logged totals, history, or anyone else's timer |
+| Operador | Start and stop their own timer, create a project with name and optional notes, and add an internal subtask. No budgets, planned hours, logged totals, history, or anyone else's timer |
 
 One open timer per person. Logging out does not stop it. Deactivating a user does.
 
@@ -53,9 +53,11 @@ The staging deployment at `labone-horas.parmezani.com` was removed from `parmavp
 
 Local source and the historical Docker deployment files in `deploy/vps/` are retained. Any future VPS deployment must first follow `/Users/gparmezani/Sites/VULTR_VPS_DEPLOYMENT_RULEBOOK.md`; there is no existing Labone stack or database on that server to update.
 
-### Local website concepts
+### Website concepts
 
-Three standalone Portuguese one-page website studies remain available locally at `/conceito-1.html` (dark industrial/orange), `/conceito-2.html` (blue engineering/technical illustration), and `/conceito-3.html` (warm editorial/olive). Their sources are in `public/`, with shared styles in `public/css/conceitos.css` and menu/form interactions in `public/js/conceitos.js`. They are presentation material, separate from the time-tracking app. Their former staging URLs went offline with the VPS retirement on 22 October 2026. Each page retains its `noindex, nofollow` robots meta tag.
+Three standalone Portuguese one-page website studies remain available locally at `/conceito-1.html` (dark industrial/orange), `/conceito-2.html` (blue engineering/technical illustration), and `/conceito-3.html` (warm editorial/olive). Their sources are in `public/`, with shared styles in `public/css/conceitos.css` and menu/form interactions in `public/js/conceitos.js`. They are presentation material, separate from the time-tracking app. Their former staging URLs went offline with the VPS retirement on 22 October 2026. On 9 November 2026, the three concepts were republished at [Concept 1](https://parmezani.com/labone-conceito-1.html), [Concept 2](https://parmezani.com/labone-conceito-2.html), and [Concept 3](https://parmezani.com/labone-conceito-3.html). Each page retains its `noindex, nofollow` robots meta tag.
+
+Publishing on the portfolio uses static copies in `/opt/parmezani/wp-content/labone-conceitos`, served by the existing WordPress Apache container. Three exact-path rewrites in `/opt/caddy/sites/parmezani.caddy` map the public HTML addresses to that folder. When republishing, rename the HTML copies to `labone-conceito-{1,2,3}.html`, change their navigation to `/labone-conceito-{1,2,3}.html`, and prefix CSS, JS, and both JPEG references (including inline CSS URLs) with `/wp-content/labone-conceitos/`. Preserve the `css/` and `js/` subdirectories. No Laravel service, database, or staging environment is needed; the content bind mount survives WordPress container recreation.
 
 The inquiry forms validate required fields and show a local demonstration message. They do not submit, store, or notify anyone; submit controls start disabled until the demo script is loaded. Fields have no submission names, and no analytics or external services are connected. Content, proposed wordmarks, services, and imagery must be validated with Labone before a real launch.
 

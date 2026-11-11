@@ -14,7 +14,7 @@ Three roles:
 |---|---|
 | Admin | Users, projects, subtasks, every time log, reports. |
 | Leader | Projects, subtasks, every time log, reports, and users. Can edit an existing time log the same way an admin does. Can create and edit leaders and operators, including turning an account off. Cannot create or edit an administrator. |
-| Operator | Start and stop their own timer. Add an internal subtask. |
+| Operator | Start and stop their own timer. Create a project with a name and optional notes, and add an internal subtask. |
 
 One company, one site. Interface in Brazilian Portuguese. Money in BRL. Clock and calendar in `America/Sao_Paulo`.
 
@@ -311,7 +311,7 @@ Create and edit form:
 
 Actions on a row: edit, close, reopen, and delete. Delete confirms in the app popup. A project delete also requires the checkbox that removes its time logs. A task delete is offered only when that task has no logs.
 
-Operators have no project list route. They reach open projects from Início.
+Operators have no project list route. They reach open projects from Início. **Novo projeto** on their home screen opens the separate create page with only Nome and Observações. Saving creates an open project attributed to that operator, with budget and planned hours set to zero on the server even if extra fields are submitted. It redirects to the new project’s clock screen so they can add internal tasks and start working. Cancel returns to Início. Creation does not allow operators to import or copy projects, edit or delete existing projects, close or reopen them, or view management data and reports.
 
 ### Projeto
 
@@ -409,7 +409,9 @@ Planned hours are edited as a decimal hour value (`1,5` and `1.5` both mean 90 m
 | GET | `/` | any |
 | GET, POST | `/usuarios` | admin, leader |
 | PUT | `/usuarios/{user}` | admin, leader |
-| GET, POST | `/projetos` | admin, leader |
+| GET | `/projetos` | admin, leader; operator redirects to Início |
+| GET | `/projetos/novo` | any; operator sees the simple form |
+| POST | `/projetos` | any; operator restricted to name and notes |
 | GET, PUT | `/projetos/{project}` | admin, leader for manage; operator GET is the start screen at `/projetos/{project}/ponto` |
 | POST | `/projetos/{project}/encerrar` | admin, leader |
 | POST | `/projetos/{project}/reabrir` | admin, leader |

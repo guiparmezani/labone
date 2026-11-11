@@ -21,11 +21,81 @@ class ProjectTest extends TestCase
         $this->actingAsRole(Role::Operator);
 
         $this->get('/projetos')->assertRedirect('/');
+    }
+
+    public function test_operador_cria_projeto_e_segue_para_adicionar_tarefas(): void
+    {
+        $operator = $this->actingAsRole(Role::Operator);
+
+        $this->get('/')->assertOk()->assertSee(route('projetos.create'), false)->assertSee('Novo projeto');
+        $this->get('/projetos/novo')->assertOk()
+            ->assertSee('name="name"', false)
+            ->assertSee('name="notes"', false)
+            ->assertDontSee('name="budget"', false)
+            ->assertDontSee('name="planned_hours"', false);
+
+        $response = $this->post('/projetos', ['name' => 'Projeto teste', 'notes' => 'Nova peça']);
+        $project = Project::query()->sole();
+        $response->assertRedirect(route('projetos.ponto', $project));
+        $this->assertSame($operator->id, $project->created_by);
+        $this->assertTrue($project->isOpen());
+        $this->assertSame(0, $project->budget_cents);
+        $this->assertSame(0, $project->planned_minutes);
+        $this->assertSame('Nova peça', $project->notes);
+        $this->get('/projetos/'.$project->id.'/ponto')->assertOk()->assertSee('Projeto teste')->assertSee('Nova tarefa');
+        $this->post('/projetos/'.$project->id.'/subtarefas', ['name' => 'Usinagem'])
+            ->assertRedirect('/projetos/'.$project->id.'/ponto');
+        $this->assertSame(SubtaskKind::Internal, $project->subtasks()->sole()->kind);
+    }
+
+    public function test_operador_nao_define_financas_autoria_ou_status_ao_criar_projeto(): void
+    {
+        $operator = $this->actingAsRole(Role::Operator);
+        $other = User::factory()->create();
+
         $this->post('/projetos', [
-            'name' => 'Molde',
-            'budget' => '10,00',
-            'planned_hours' => '1',
-        ])->assertForbidden();
+            'name' => 'Projeto teste',
+            'budget' => '999,00',
+            'budget_cents' => 99900,
+            'planned_hours' => '100',
+            'planned_minutes' => 6000,
+            'created_by' => $other->id,
+            'status' => 'closed',
+            'closed_at' => now()->toDateTimeString(),
+        ])->assertRedirect();
+
+        $project = Project::query()->sole();
+        $this->assertSame(0, $project->budget_cents);
+        $this->assertSame(0, $project->planned_minutes);
+        $this->assertSame($operator->id, $project->created_by);
+        $this->assertTrue($project->isOpen());
+        $this->assertNull($project->closed_at);
+        $this->assertSame(Role::Operator, $operator->refresh()->role);
+
+        $this->get('/projetos/'.$project->id)->assertForbidden();
+        $this->get('/projetos/'.$project->id.'/editar')->assertForbidden();
+        $this->put('/projetos/'.$project->id, ['name' => 'Alterado'])->assertForbidden();
+        $this->get('/projetos/'.$project->id.'/relatorio')->assertForbidden();
+        $this->get('/projetos/'.$project->id.'/relatorio.csv')->assertForbidden();
+        $this->get('/projetos/'.$project->id.'/copiar')->assertForbidden();
+        $this->post('/projetos/'.$project->id.'/copiar', ['name' => 'Cópia'])->assertForbidden();
+        $this->post('/projetos/'.$project->id.'/encerrar')->assertForbidden();
+        $this->post('/projetos/'.$project->id.'/reabrir')->assertForbidden();
+        $this->delete('/projetos/'.$project->id, ['apagar_lancamentos' => '1'])->assertForbidden();
+        $this->assertSame(1, Project::query()->count());
+    }
+
+    public function test_criacao_por_operador_valida_nome_e_observacoes(): void
+    {
+        $this->actingAsRole(Role::Operator);
+
+        foreach (['', 'A', str_repeat('A', 161)] as $name) {
+            $this->from('/projetos/novo')->post('/projetos', ['name' => $name])
+                ->assertRedirect('/projetos/novo')->assertSessionHasErrors('name');
+        }
+        $this->post('/projetos', ['name' => 'Projeto teste', 'notes' => str_repeat('A', 2001)])
+            ->assertSessionHasErrors('notes');
+        $this->assertSame(0, Project::query()->count());
     }
 
     public function test_lider_cria_projeto_com_reais_e_horas(): void

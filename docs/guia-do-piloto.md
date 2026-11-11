@@ -19,7 +19,7 @@ O administrador vê tudo: projetos, lançamentos, relatórios e usuários.
 
 O líder cria e encerra projetos, inclui tarefas internas e de equipe terceira, e corrige o ponto de qualquer pessoa. Não há tela de relatório para o líder.
 
-O operador entra, escolhe um projeto aberto e uma tarefa interna, e aperta Iniciar. Para encerrar, aperta Parar. Pode incluir uma tarefa interna. Não vê horas gastas, orçamento, nem o ponto das outras pessoas. Sair do sistema não para o ponto.
+O operador entra, escolhe um projeto aberto e uma tarefa interna, e aperta Iniciar. Para encerrar, aperta Parar. Em **Início → Novo projeto**, pode criar um projeto informando o nome e, se quiser, observações. Depois de salvar, abre a tela para incluir tarefas internas e iniciar o ponto. O orçamento e as horas previstas ficam com a administração. Pode incluir uma tarefa interna. Não vê horas gastas, orçamento, nem o ponto das outras pessoas. Sair do sistema não para o ponto.
 
 Equipe terceira é só orçamento, em reais. Esse tipo de tarefa não recebe ponto.
 

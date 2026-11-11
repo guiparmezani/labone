@@ -19,7 +19,7 @@ class ProjectPolicy
 
     public function create(User $user): bool
     {
-        return $user->managesProjects();
+        return $user->managesProjects() || $user->isOperator();
     }
 
     public function update(User $user, Project $project): bool

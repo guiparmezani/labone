@@ -12,7 +12,10 @@
         @endforelse
     </div>
     <section class="panel">
-        <h1>Projetos em andamento</h1>
+        <div class="page-head">
+            <h1>Projetos em andamento</h1>
+            <a class="btn btn-primary" href="{{ route('projetos.create') }}">Novo projeto</a>
+        </div>
         <ul class="list">
             @forelse ($projects as $project)
                 <li>

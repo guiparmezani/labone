@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Project;
 use App\Support\Formato;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -9,11 +10,17 @@ class StoreProjectRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->managesProjects() ?? false;
+        return $this->user()?->can('create', Project::class) ?? false;
     }
 
     protected function prepareForValidation(): void
     {
+        if ($this->user()?->isOperator()) {
+            $this->merge(['budget_cents' => 0, 'planned_minutes' => 0]);
+
+            return;
+        }
+
         $this->merge([
             'budget_cents' => $this->orcamentoEmCentavos(),
             'planned_minutes' => Formato::minutosDeHoras($this->input('planned_hours')),
@@ -25,7 +32,7 @@ class StoreProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'min:2', 'max:160'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'budget' => ['nullable', 'string'],
@@ -33,6 +40,12 @@ class StoreProjectRequest extends FormRequest
             'planned_hours' => ['required', 'string'],
             'planned_minutes' => ['required', 'integer', 'min:0'],
         ];
+
+        if ($this->user()?->isOperator()) {
+            unset($rules['budget'], $rules['planned_hours']);
+        }
+
+        return $rules;
     }
 
     /**
